@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.django
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.react
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app/frontend
+    depends_on:
+      - backend
+    env_file:
+      - ./frontend/.env

@@ -1,0 +1,35 @@
+.text-footer {
+    background-color: #0c6e9f;
+    color: white;
+    padding: 15px;
+    font-family: Arial, sans-serif;
+  }
+  
+  .footer-left,
+  .footer-right {
+    display: flex;
+    align-items: center;
+  }
+  
+  .footer-left {
+    margin-left: -100px;
+  }
+  
+  .footer-right {
+    margin-right: -150px;
+  }
+  
+  .footer-left:hover,
+  .footer-right:hover {
+    text-decoration: underline;
+  }
+  
+  @media (max-width: 768px) {
+    .footer-left,
+    .footer-right {
+      font-size: 12px;
+      margin-left: 0;
+      margin-right: 0;
+    }
+  }
+  

@@ -1,0 +1,322 @@
+/* Adicione ao seu arquivo dividas.css */
+
+
+.modal {
+  z-index: 1050;
+}
+
+.show {
+  display: block;
+}
+
+.d-block {
+  display: block;
+}
+
+/* Outros estilos existentes */
+.header-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 25px;
+}
+
+.header-icon {
+  font-size: 34px;
+  color: #0073e6;
+}
+
+.titulo-pagina {
+  font-size: 25px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0;
+  letter-spacing: 0.4px;
+  font-family: 'Poppins', sans-serif;
+  position: relative;
+}
+
+.titulo-pagina::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -5px;
+  width: 40px;
+  height: 3px;
+  background-color: #0073e6;
+  border-radius: 2px;
+}
+
+.table thead {
+  background-color: #0073e6;
+  color: white;
+}
+
+.table td, .table th {
+  vertical-align: middle;
+  padding: 8px 5px;
+  font-size: 14px;
+}
+
+/* Estilos de filtro */
+.column-header {
+  position: relative;
+  white-space: nowrap;
+  min-width: 120px; /* Define uma largura mínima */
+}
+
+.column-title {
+  position: relative;
+}
+
+.filter-icon-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 5px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.filter-dropdown {
+  position: relative;
+}
+
+.filter-dropdown-menu {
+  display: none;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 100%;
+  z-index: 1000;
+  min-width: 200px;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #212529;
+  text-align: left;
+  background-color: #fff;
+  background-clip: padding-box;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 0.25rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.175);
+}
+
+.filter-dropdown-menu.show {
+  display: block;
+}
+
+.filter-options {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+/* Badges para filtros ativos */
+.active-filters .badge {
+  font-size: 11px;
+  padding: 5px 8px;
+}
+/* Adicione ao seu arquivo dividas.css */
+
+/* Estilos para o modal */
+/* Adicione ao seu arquivo dividas.css */
+/* Substitua o estilo modal-backdrop por este */
+.modal-backdrop {
+  display: none; /* Esconde completamente o backdrop padrão */
+}
+
+/* Adicione estes novos estilos */
+.custom-modal-container {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  /* Inicia após a barra lateral */
+  left: 6rem; 
+  z-index: 1040;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-dialog {
+  z-index: 1050;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 800px;
+}
+/* Estilos para o botão expandir/colapsar */
+.btn-link {
+  color: #0d6efd;
+  padding: 0;
+  font-size: 1rem;
+  text-decoration: none;
+}
+
+.btn-link:hover {
+  opacity: 0.8;
+}
+
+/* Estilos para tabela aninhada */
+.table-sm td {
+  padding: 0.3rem;
+  font-size: 0.875rem;
+}
+
+.bg-light {
+  background-color: #f8f9fa;
+}
+/* Adicione ao seu arquivo dividas.css */
+
+/* Estilos para o modal */
+.custom-modal-container {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  /* Inicia após a barra lateral */
+  left: 6rem; 
+  z-index: 1040;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-dialog {
+  z-index: 1050;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 800px;
+}
+
+/* Outros estilos existentes */
+.header-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 25px;
+}
+
+.header-icon {
+  font-size: 34px;
+  color: #0073e6;
+}
+
+.titulo-pagina {
+  font-size: 25px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0;
+  letter-spacing: 0.4px;
+  font-family: 'Poppins', sans-serif;
+  position: relative;
+}
+
+.titulo-pagina::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -5px;
+  width: 40px;
+  height: 3px;
+  background-color: #0073e6;
+  border-radius: 2px;
+}
+
+.table thead {
+  background-color: #0073e6;
+  color: white;
+}
+
+.table td, .table th {
+  vertical-align: middle;
+  padding: 8px 5px;
+  font-size: 14px;
+}
+
+/* Estilos de filtro */
+.column-header {
+  position: relative;
+  white-space: nowrap;
+  min-width: 120px; /* Define uma largura mínima */
+}
+
+.column-title {
+  position: relative;
+}
+
+.filter-icon-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 5px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.filter-dropdown {
+  position: relative;
+}
+
+.filter-dropdown-menu {
+  display: none;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 100%;
+  z-index: 1000;
+  min-width: 200px;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #212529;
+  text-align: left;
+  background-color: #fff;
+  background-clip: padding-box;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 0.25rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.175);
+}
+
+.filter-dropdown-menu.show {
+  display: block;
+}
+
+.filter-options {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+/* Badges para filtros ativos */
+.active-filters .badge {
+  font-size: 11px;
+  padding: 5px 8px;
+}
+
+/* Estilos para o botão expandir/colapsar */
+.btn-link {
+  color: #0d6efd;
+  padding: 0;
+  font-size: 1rem;
+  text-decoration: none;
+}
+
+.btn-link:hover {
+  opacity: 0.8;
+}
+
+/* Estilos para tabela aninhada */
+.table-sm td {
+  padding: 0.3rem;
+  font-size: 0.875rem;
+}
+
+.bg-light {
+  background-color: #f8f9fa;
+}

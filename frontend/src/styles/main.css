@@ -1,0 +1,87 @@
+
+/* Isto cria uma barra lateral estreita fixada à esquerda da página */
+@import url('https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700');
+/* Estilos para dispositivos de tela pequena */
+@media only screen and (max-width: 600px) {
+    /* Adapte o layout para telas pequenas aqui */
+  }
+  
+  /* Estilos para dispositivos de tela média */
+  @media only screen and (min-width: 601px) and (max-width: 1024px) {
+    /* Adapte o layout para telas médias aqui */
+  }
+  
+  /* Estilos para dispositivos de tela grande */
+  @media only screen and (min-width: 1025px) {
+    /* Adapte o layout para telas grandes aqui */
+  }
+/* Isto cria uma barra lateral estreita fixada à esquerda da página */
+@import url('https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700');
+/* Estilos para dispositivos de tela pequena */
+@media only screen and (max-width: 600px) {
+    /* Adapte o layout para telas pequenas aqui */
+  }
+  
+  /* Estilos para dispositivos de tela média */
+  @media only screen and (min-width: 601px) and (max-width: 1024px) {
+    /* Adapte o layout para telas médias aqui */
+  }
+  
+  /* Estilos para dispositivos de tela grande */
+  @media only screen and (min-width: 1025px) {
+    /* Adapte o layout para telas grandes aqui */
+  }
+  :root {
+    --color-primary: #269fe6;
+    --color-primary-hover: #2086c2;
+    --color-primary-dark: #13141f;
+    --color-primary-dark-hover: #212336;
+    --color-primary-light: #d4ecfa;
+    --color-primary-light-hover: #bdd8e7;
+    --color-white: #fff;
+    --color-black: #000;
+    --color-dark-text: #444;
+    --color-info-light: #cce5ff;
+    --color-debug-light: #cce5ff;
+    --color-success-light: #d4edda;
+    --color-alert-light: #fff3cd;
+    --color-warning-light: #fff3cd;
+    --color-error-light: #f8d7da;
+    --color-info-dark: #4d86c4;
+    --color-debug-dark: #4d86c4;
+    --color-success-dark: #4a9c5d;
+    --color-alert-dark: #927f40;
+    --color-warning-dark: #927f40;
+    --color-error-dark: #da525d;
+    --color-gray-0: #f9f9f9;
+    --color-gray-1: #e0e0e0;
+    --color-gray-2: #c7c7c7;
+    --color-gray-3: #aeaeae;
+    --color-gray-4: #959595;
+    --color-gray-5: #7d7d7d;
+    --color-gray-6: #646464;
+    --color-gray-7: #4b4b4b;
+    --color-gray-8: #323232;
+    --color-gray-9: #191919;
+    --font-primary: sans-serif;
+    --font-headings: 'Roboto Slab', serif;
+    --spacing-gutter-medium: 3rem;
+    --spacing-gutter-large: 4rem;
+  }
+
+:root {
+    /* suas variáveis */
+  }
+  
+  /* ...todo seu CSS de layout e responsividade... */
+  
+  .content {
+    margin-left: 7rem;
+    margin-right: 2rem;
+    padding: 2rem 1rem;
+    display: grid;
+    flex-direction: column;
+    align-items: center;
+    max-width: 100%;
+  }
+  

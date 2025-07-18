@@ -1,0 +1,7 @@
+.kanban-dashboard input,
+.kanban-dashboard button {
+  font-family: 'Poppins', sans-serif;
+}
+.kanban-dashboard.container {
+  max-width: 1600px; /* aumenta a largura máxima */
+}
