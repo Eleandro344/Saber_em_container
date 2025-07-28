@@ -2,7 +2,6 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Instalar todas as dependências necessárias para o mysqlclient
 RUN apt-get update && apt-get install -y \
     default-libmysqlclient-dev \
     pkg-config \
@@ -10,15 +9,12 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar requirements e instalar dependências Python
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar resto do código
 COPY . .
 
-# Expor porta
-EXPOSE 8000
+RUN python manage.py collectstatic --noinput
+EXPOSE 8080
 
-# Comando para iniciar o servidor
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "saber_kanban.wsgi:application"]

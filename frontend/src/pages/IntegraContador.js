@@ -11,12 +11,25 @@ const IntegraContador = () => {
 
   const cancelado = useRef(false);
 
-  useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_BASE}/api/empresas/`)
-      .then(res => res.json())
-      .then(data => setEmpresas(data))
-      .catch(() => setMensagem('Erro ao carregar empresas'));
-  }, []);
+useEffect(() => {
+  const token = localStorage.getItem('access'); // ou sessionStorage.getItem('access')
+
+  fetch(`${process.env.REACT_APP_API_BASE}/api/empresas/`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    }
+  })
+    .then(res => {
+      if (!res.ok) {
+        throw new Error('Erro de autenticação');
+      }
+      return res.json();
+    })
+    .then(data => setEmpresas(data))
+    .catch(() => setMensagem('Erro ao carregar empresas'));
+}, []);
 
   const toggleSelecionada = (cnpj) => {
     setSelecionadas(prev =>

@@ -38,6 +38,7 @@ from sqlalchemy.orm import sessionmaker
 from requests_pkcs12 import post
 import pycurl
 import PyPDF2
+from rest_framework_simplejwt.authentication import JWTAuthentication  # ✅ CERTO
 
 # Local config
 from config_local import pasta_pdfs, pasta_lidos
@@ -54,6 +55,7 @@ senha = os.getenv("SENHA_CERTIFICADO")
 # CLASSES DE VIEWSETS E AUTENTICAÇÃO
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 class QuadroViewSet(viewsets.ModelViewSet):
     queryset = Quadro.objects.all()
@@ -64,15 +66,24 @@ class TarefaViewSet(viewsets.ModelViewSet):
     queryset = Tarefa.objects.all()
     serializer_class = TarefaSerializer
 
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from decouple import config
+from sqlalchemy import create_engine
+import pandas as pd
 
-@csrf_exempt
-def listar_empresas(request):
-    try:
-        engine = create_engine(config('DATABASE_URL'))
-        df = pd.read_sql("SELECT razaosocial, cnpj FROM empresas", con=engine)
-        return JsonResponse(df.to_dict(orient='records'), safe=False)
-    except Exception as e:
-        return JsonResponse({'erro': str(e)}, status=500)
+class EmpresaListView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            engine = create_engine(config('DATABASE_URL'))
+            df = pd.read_sql("SELECT razaosocial, cnpj FROM empresas", con=engine)
+            return Response(df.to_dict(orient='records'))
+        except Exception as e:
+            return Response({'erro': str(e)}, status=500)
 
 
 

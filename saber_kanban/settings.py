@@ -15,23 +15,25 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-rr!v+ife@638a0#c)p@j)%5wh=4cfs%z)&*wv8(-*e!hnb+q(-"
+from decouple import config
 
+SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
+# DEBUG = False
 DEBUG = True
 
 ## AQUI ALTEREI O IP DA MAQUINA LOCAL
 ALLOWED_HOSTS = [
-    config('DJANGO_ALLOWED_HOST').strip(),
-    'localhost',
-    '127.0.0.1'
+    config('DJANGO_ALLOWED_HOST', 'localhost')
 ]
-
 
 CORS_ALLOWED_ORIGINS = [
+    config("DJANGO_CORS_ORIGIN"),
     "http://localhost:3000",
-    config('DJANGO_CORS_ORIGIN'),
 ]
+
+
+
 from decouple import config
 
 # print('🚀 VARIÁVEL DJANGO_ALLOWED_HOST =>', config('DJANGO_ALLOWED_HOST'))
@@ -175,6 +177,7 @@ SIMPLE_JWT = {
 
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 
 # Static files (CSS, JavaScript, Images)

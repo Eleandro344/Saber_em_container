@@ -16,15 +16,17 @@ from core.views import dctfweb_emitir_xmls_assinados
 from core.views import listar_dividas
 from core.views import enviar_email_dividas
 from core.views import processar_pdfs
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from core.views import EmpresaListView
 
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/', include('core.urls')),  # 👈 Adicione esta linha
-    path('api/empresas/', views.listar_empresas, name='listar_empresas'),
+    path('api/empresas/', EmpresaListView.as_view(), name='listar_empresas'),
     path('api/empresas/adicionar/', views.adicionar_empresa, name='adicionar_empresa'),
     path('api/empresas/<str:cnpj>/', views.deletar_empresa, name='deletar_empresa'),
     path('api/empresas-dctfweb/', empresas_dctfweb, name='empresas_dctfweb'),
