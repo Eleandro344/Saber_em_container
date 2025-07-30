@@ -15,7 +15,8 @@ const Sidebar = () => {
     try {
       const decoded = jwtDecode(token);
       console.log('DECODED JWT:', decoded); // 👈 Veja o que aparece no console
-      username = decoded.first_name || decoded.username || 'usuário';
+// Por algo como (dependendo do que você vê no console)
+     username = decoded.first_name || decoded.username || decoded.sub || 'usuário';
     } catch (e) {
       console.error('Erro ao decodificar token:', e);
     }

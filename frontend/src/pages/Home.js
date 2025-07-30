@@ -13,8 +13,8 @@ const Home = () => {
   if (token) {
     try {
       const decoded = jwtDecode(token);
-      username = decoded.first_name || decoded.username || 'usuário';
-    } catch (e) {
+      username = decoded.first_name || decoded.username || decoded.sub || 'usuário';
+   } catch (e) {
       console.error('Erro ao decodificar token:', e);
     }
   }

@@ -42,7 +42,7 @@ const Login = () => {
         {erro && <div className="alert alert-danger">{erro}</div>}
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
-            <label>Email</label>
+            <label>Usuario</label>
             <input
               type="text"
               className="form-control"

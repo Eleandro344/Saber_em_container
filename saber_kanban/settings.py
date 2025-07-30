@@ -19,19 +19,22 @@ from decouple import config
 
 SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = False
-DEBUG = True
+DEBUG = False
+# DEBUG = True
 
 ## AQUI ALTEREI O IP DA MAQUINA LOCAL
-ALLOWED_HOSTS = [
-    config('DJANGO_ALLOWED_HOST', 'localhost')
-]
+## AQUI ALTEREI O IP DA MAQUINA LOCAL
+ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOST').split(',')
 
 CORS_ALLOWED_ORIGINS = [
     config("DJANGO_CORS_ORIGIN"),
     "http://localhost:3000",
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://comece.dev",
+    "https://saber-comece-frontend-437361930173.europe-west1.run.app",
+]
 
 
 from decouple import config
