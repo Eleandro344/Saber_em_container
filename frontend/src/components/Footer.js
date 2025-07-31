@@ -6,7 +6,7 @@ const Footer = () => {
     <footer className="text-footer text-white text-center py-3 fixed-bottom">
       <div className="container d-flex justify-content-between">
         <span className="footer-left">
-          © 2024 Saber Comece. Todos os direitos reservados.
+          © 2025 Saber Comece. Todos os direitos reservados.
         </span>
         <a
           href="https://www.linkedin.com/in/eleandro-martins-a466ba265/"

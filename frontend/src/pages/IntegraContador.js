@@ -187,8 +187,10 @@ useEffect(() => {
             type="text"
             className="form-control"
             value={novoCnpj}
-            onChange={(e) => setNovoCnpj(e.target.value)}
-            placeholder="Digite o CNPJ (somente números)"
+          onChange={(e) => {
+            const onlyNumbers = e.target.value.replace(/\D/g, '');
+            setNovoCnpj(onlyNumbers);
+}}            placeholder="Digite o CNPJ (somente números)"
           />
         </div>
         <div className="text-end">

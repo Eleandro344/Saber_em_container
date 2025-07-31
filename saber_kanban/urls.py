@@ -16,14 +16,14 @@ from core.views import dctfweb_emitir_xmls_assinados
 from core.views import listar_dividas
 from core.views import enviar_email_dividas
 from core.views import processar_pdfs
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from core.views import EmpresaListView
-
+from core.views import CustomTokenObtainPairView  # ✅ Importe sua view correta
+from rest_framework_simplejwt.views import TokenRefreshView
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),  # ✅ Corrigido
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/', include('core.urls')),  # 👈 Adicione esta linha
     path('api/empresas/', EmpresaListView.as_view(), name='listar_empresas'),
