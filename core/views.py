@@ -984,8 +984,74 @@ def atualizar_status_postado(request):
             'mensagem': 'Erro interno ao atualizar status',
             'erro_detalhado': str(e)
         }, status=500)
-
-
+@csrf_exempt
+def cadastrar_empresa(request):
+    if request.method != 'POST':
+        return JsonResponse({'mensagem': 'Método não permitido'}, status=405)
+    
+    try:
+        body = json.loads(request.body)
+        cod = body.get('cod')
+        razaosocial = body.get('razaosocial')
+        operador = body.get('operador')
+        cnpj = body.get('cnpj')
+        
+        # Validação básica
+        if not cod or not razaosocial or not cnpj:
+            return JsonResponse({'mensagem': 'Código, Razão Social e CNPJ são obrigatórios'}, status=400)
+        
+        # Garantir que o CNPJ tenha apenas números
+        cnpj_limpo = re.sub(r'\D', '', cnpj)
+        if len(cnpj_limpo) != 14:
+            return JsonResponse({'mensagem': 'CNPJ deve conter 14 dígitos'}, status=400)
+        
+        # NÃO formatar o CNPJ, usar apenas os números
+        # Remova ou comente esta linha:
+        # cnpj_formatado = f"{cnpj_limpo[:2]}.{cnpj_limpo[2:5]}.{cnpj_limpo[5:8]}/{cnpj_limpo[8:12]}-{cnpj_limpo[12:]}"
+        
+        # Conectar ao banco de dados
+        engine = create_engine(f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:3306/{DB_NAME}")
+        
+        with engine.connect() as conn:
+            # Verificar se o CNPJ já existe
+            select_query = text("SELECT cnpj FROM departamento_pessoal WHERE cnpj = :cnpj")
+            result = conn.execute(select_query, {'cnpj': cnpj_limpo})
+            
+            if result.fetchone():
+                return JsonResponse({'mensagem': 'Empresa com este CNPJ já existe'}, status=400)
+            
+            # Inserir nova empresa
+            insert_query = text("""
+            INSERT INTO departamento_pessoal (cod, razaosocial, operador, cnpj)
+            VALUES (:cod, :razaosocial, :operador, :cnpj)
+            """)
+            
+            conn.execute(insert_query, {
+                'cod': cod,
+                'razaosocial': razaosocial,
+                'operador': operador or None,  # Permite valor nulo
+                'cnpj': cnpj_limpo  # Usar apenas os números do CNPJ
+            })
+            
+            # Commit da transação
+            conn.commit()
+            
+            return JsonResponse({
+                'mensagem': 'Empresa cadastrada com sucesso',
+                'empresa': {
+                    'cod': cod,
+                    'razaosocial': razaosocial,
+                    'operador': operador,
+                    'cnpj': cnpj_limpo  # Retornar o CNPJ sem formatação
+                }
+            })
+            
+    except Exception as e:
+        print(f"Erro ao cadastrar empresa: {str(e)}")
+        return JsonResponse({
+            'mensagem': 'Erro interno ao cadastrar empresa',
+            'erro_detalhado': str(e)
+        }, status=500)
 #GERAR RECIBO DE TRANSMISSÃO
 # 3. VIEW: GERAR RECIBOS DCTFWEB
 @csrf_exempt

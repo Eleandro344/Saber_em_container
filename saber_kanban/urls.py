@@ -16,6 +16,8 @@ from core.views import dctfweb_emitir_xmls_assinados
 from core.views import listar_dividas
 from core.views import enviar_email_dividas
 from core.views import processar_pdfs
+from core.views import cadastrar_empresa
+
 from core.views import EmpresaListView
 from core.views import CustomTokenObtainPairView  # ✅ Importe sua view correta
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -40,6 +42,7 @@ urlpatterns = [
     path('api/enviar-email-dividas/', enviar_email_dividas, name='enviar_email_dividas'),
     path('api/processar-pdfs/',processar_pdfs, name='processar_pdfs'),
     path('api/atualizar-status-postado/', views.atualizar_status_postado, name='atualizar_status_postado'),
+    path('api/cadastrar-empresa/',cadastrar_empresa, name='cadastrar_empresa'),
 ]
 
     
