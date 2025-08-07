@@ -479,7 +479,7 @@ def extrair_informacoes_pdf(pdf_bytes):
         texto_completo = ""
         for pagina in pdf_reader.pages:
             texto_completo += pagina.extract_text()
-            
+         #   
         # Buscar data de pagamento usando expressões regulares
         data_pagamento = None
         padrao_data = r"Pagar este documento até\s*(\d{2}/\d{2}/\d{4})"
