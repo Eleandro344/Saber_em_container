@@ -39,8 +39,7 @@ urlpatterns = [
     path('api/dividas/', listar_dividas, name='listar_dividas'),
     path('api/enviar-email-dividas/', enviar_email_dividas, name='enviar_email_dividas'),
     path('api/processar-pdfs/',processar_pdfs, name='processar_pdfs'),
-
-
+    path('api/atualizar-status-postado/', views.atualizar_status_postado, name='atualizar_status_postado'),
 ]
 
     

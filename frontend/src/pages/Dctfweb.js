@@ -12,6 +12,7 @@ const Dctfweb = () => {
   const [selecionadas, setSelecionadas] = useState([]);
   const [executando, setExecutando] = useState(false);
   const [mensagem, setMensagem] = useState('');
+  const [atualizandoStatus, setAtualizandoStatus] = useState(false);
 
   const [filtros, setFiltros] = useState({
     cod: '',
@@ -22,21 +23,62 @@ const Dctfweb = () => {
     pagamento: '',
     data_vencimento: '',
     valor: '',
+    postado: '',
+    data_geracao: '',
   });
 
-  useEffect(() => {
-    if (!competencia) return;
-
+  const carregarEmpresas = () => {
     axios
       .get(`${process.env.REACT_APP_API_BASE}/api/empresas-dctfweb/?competencia=${competencia}`)
       .then((res) => setEmpresas(res.data))
       .catch(() => setMensagem('Erro ao carregar empresas.'));
+  };
+
+  useEffect(() => {
+    if (!competencia) return;
+    carregarEmpresas();
   }, [competencia]);
 
   const handleCheckbox = (cnpj) => {
     setSelecionadas((prev) =>
       prev.includes(cnpj) ? prev.filter((item) => item !== cnpj) : [...prev, cnpj]
     );
+  };
+
+  // Função para alternar o status "postado"
+  const alternarStatusPostado = async (cnpj, statusAtual) => {
+    // Definir o novo status (alternando entre "Sim" e "Não" ou adicionando "Sim" se for nulo)
+    const novoStatus = statusAtual === 'Sim' ? 'Não' : 'Sim';
+    
+    setAtualizandoStatus(true);
+    setMensagem('Atualizando status...');
+    
+    try {
+      // Chamar API para atualizar o status
+      await axios.post(
+        `${process.env.REACT_APP_API_BASE}/api/atualizar-status-postado/`,
+        { 
+          cnpj: cnpj, 
+          postado: novoStatus === 'Sim'  // Enviar true para "Sim" e false para "Não"
+        }
+      );
+      
+      // Atualizar a lista local para refletir a mudança sem precisar recarregar
+      setEmpresas(empresas.map(emp => {
+        if (emp.cnpj === cnpj) {
+          return { ...emp, postado: novoStatus };
+        }
+        return emp;
+      }));
+      
+      setMensagem(`Status atualizado com sucesso para "${novoStatus}"`);
+      
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+      setMensagem(`Erro ao atualizar status: ${error.response?.data?.mensagem || error.message}`);
+    } finally {
+      setAtualizandoStatus(false);
+    }
   };
 
   const baixarZip = (endpoint, nomeArquivo, sucessoMsg, erroMsg) => async () => {
@@ -89,7 +131,7 @@ const Dctfweb = () => {
 
   const gerarDeclaracoes = baixarZip(
     `${process.env.REACT_APP_API_BASE}/api/dctfweb/declaracoes/`,
-    'declaracoes_dctfweb.zip',
+    'declarações_dctfweb.zip',
     'Declarações baixadas com sucesso.',
     'Erro ao gerar declarações: '
   );
@@ -205,17 +247,81 @@ const Dctfweb = () => {
               <th>Pagamento</th>
               <th>Data vencimento</th>
               <th>Valor</th>
+              <th>Postado Onvio</th>
+              <th>Data Geração</th>
             </tr>
             <tr>
               <th></th>
-              <th><input className="form-control form-control-sm" placeholder="Filtrar..." onChange={(e) => setFiltros(prev => ({ ...prev, cod: e.target.value }))} /></th>
-              <th><input className="form-control form-control-sm" placeholder="Filtrar..." onChange={(e) => setFiltros(prev => ({ ...prev, razaosocial: e.target.value }))} /></th>
-              <th><input className="form-control form-control-sm" placeholder="Filtrar..." onChange={(e) => setFiltros(prev => ({ ...prev, operador: e.target.value }))} /></th>
-              <th><input className="form-control form-control-sm" placeholder="Filtrar..." onChange={(e) => setFiltros(prev => ({ ...prev, cnpj: e.target.value }))} /></th>
-              <th><input className="form-control form-control-sm" placeholder="Filtrar..." onChange={(e) => setFiltros(prev => ({ ...prev, situacao: e.target.value }))} /></th>
-              <th><input className="form-control form-control-sm" placeholder="Filtrar..." onChange={(e) => setFiltros(prev => ({ ...prev, pagamento: e.target.value }))} /></th>
-              <th><input className="form-control form-control-sm" placeholder="Filtrar..." onChange={(e) => setFiltros(prev => ({ ...prev, data_vencimento: e.target.value }))} /></th>
-              <th><input className="form-control form-control-sm" placeholder="Filtrar..." onChange={(e) => setFiltros(prev => ({ ...prev, valor: e.target.value }))} /></th>
+              <th>
+                <input
+                  className="form-control form-control-sm"
+                  placeholder="Filtrar..."
+                  onChange={(e) => setFiltros(prev => ({ ...prev, cod: e.target.value }))}
+                />
+              </th>
+              <th>
+                <input
+                  className="form-control form-control-sm"
+                  placeholder="Filtrar..."
+                  onChange={(e) => setFiltros(prev => ({ ...prev, razaosocial: e.target.value }))}
+                />
+              </th>
+              <th>
+                <input
+                  className="form-control form-control-sm"
+                  placeholder="Filtrar..."
+                  onChange={(e) => setFiltros(prev => ({ ...prev, operador: e.target.value }))}
+                />
+              </th>
+              <th>
+                <input
+                  className="form-control form-control-sm"
+                  placeholder="Filtrar..."
+                  onChange={(e) => setFiltros(prev => ({ ...prev, cnpj: e.target.value }))}
+                />
+              </th>
+              <th>
+                <input
+                  className="form-control form-control-sm"
+                  placeholder="Filtrar..."
+                  onChange={(e) => setFiltros(prev => ({ ...prev, situacao: e.target.value }))}
+                />
+              </th>
+              <th>
+                <input
+                  className="form-control form-control-sm"
+                  placeholder="Filtrar..."
+                  onChange={(e) => setFiltros(prev => ({ ...prev, pagamento: e.target.value }))}
+                />
+              </th>
+              <th>
+                <input
+                  className="form-control form-control-sm"
+                  placeholder="Filtrar..."
+                  onChange={(e) => setFiltros(prev => ({ ...prev, data_vencimento: e.target.value }))}
+                />
+              </th>
+              <th>
+                <input
+                  className="form-control form-control-sm"
+                  placeholder="Filtrar..."
+                  onChange={(e) => setFiltros(prev => ({ ...prev, valor: e.target.value }))}
+                />
+              </th>
+              <th>
+                <input
+                  className="form-control form-control-sm"
+                  placeholder="Filtrar..."
+                  onChange={(e) => setFiltros(prev => ({ ...prev, postado: e.target.value }))}
+                />
+              </th>
+              <th>
+                <input
+                  className="form-control form-control-sm"
+                  placeholder="Filtrar..."
+                  onChange={(e) => setFiltros(prev => ({ ...prev, data_geracao: e.target.value }))}
+                />
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -244,11 +350,28 @@ const Dctfweb = () => {
                     </span>
                   </td>
                   <td>
-                    <span className={empresa.pagamento ? 'text-danger fw-bold' : 'text-muted'}>
-                      {empresa.pagamento || '-'}</span>
+                    <span className={
+                      empresa.pagamento === 'LANÇADO'
+                        ? 'text-success fw-bold'
+                        : empresa.pagamento
+                          ? 'text-danger fw-bold'
+                          : 'text-muted'
+                    }>
+                      {empresa.pagamento || '-'}
+                    </span>
                   </td>
                   <td>{empresa.data_vencimento || '-'}</td>
                   <td>{empresa.valor}</td>
+                  <td>
+                    <button
+                      className={`btn btn-sm ${empresa.postado === 'Sim' ? 'btn-success' : 'btn-outline-secondary'}`}
+                      onClick={() => alternarStatusPostado(empresa.cnpj, empresa.postado)}
+                      disabled={atualizandoStatus}
+                    >
+                      {empresa.postado || 'Não'}
+                    </button>
+                  </td>
+                  <td>{empresa.data_geracao || '-'}</td>
                 </tr>
               ))}
           </tbody>

@@ -326,6 +326,13 @@ from requests_pkcs12 import post
 # --------------------------
 # 1. VIEW: LISTAR EMPRESAS POR COMPETÊNCIA
 # --------------------------
+from datetime import datetime
+import pandas as pd
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from sqlalchemy import create_engine
+from decouple import config
+
 @csrf_exempt
 def empresas_dctfweb(request):
     if request.method != 'GET':
@@ -334,22 +341,46 @@ def empresas_dctfweb(request):
     try:
         engine = create_engine(config('DATABASE_URL'))
 
-        query = "SELECT cod, razaosocial, operador, cnpj FROM departamento_pessoal"
+        query = """
+            SELECT cod, razaosocial, operador, situacao, pagamento, data_vencimento, valor, cnpj, data_geracao, postado    
+            FROM departamento_pessoal
+        """
         df = pd.read_sql(query, con=engine)
 
-        # Ajuste no formato do CNPJ (remover notação científica e garantir 14 dígitos)
+        # Garantir CNPJ com 14 dígitos
         df['cnpj'] = df['cnpj'].apply(lambda x: str(int(float(x))).zfill(14))
 
-        # Adicionar colunas fictícias para manter compatibilidade com estrutura da tabela no frontend
-        df['situacao'] = 'Não gerado'
-        df['pagamento'] = ''
-        df['data_vencimento'] = ''
-        df['valor'] = 'R$ 0,00'
+        # Tratar valores nulos
+        df['situacao'] = df['situacao'].fillna('Não gerado')
+        df['pagamento'] = df['pagamento'].fillna('')
+        df['data_vencimento'] = df['data_vencimento'].fillna('')
+        df['valor'] = df['valor'].fillna('R$ 0,00')
+        df['data_geracao'] = df['data_geracao'].fillna('')
+        df['postado'] = df['postado'].fillna('Não postado')
+
+        # Obter mês e ano atuais
+        hoje = datetime.today()
+        mes_atual = hoje.month
+        ano_atual = hoje.year
+
+        # Converter data_vencimento para datetime (quando possível)
+        df['data_vencimento'] = pd.to_datetime(df['data_vencimento'], errors='coerce')
+
+        # Criar uma máscara de datas no mês atual
+        vencimentos_mes_atual = (df['data_vencimento'].dt.month == mes_atual) & \
+                                (df['data_vencimento'].dt.year == ano_atual)
+
+        # Para linhas que NÃO são do mês atual, sobrescrever colunas
+        df.loc[~vencimentos_mes_atual, ['pagamento', 'data_vencimento', 'valor']] = ['Não gerado', 'Não gerado', 'Não gerado']
+
+        # Converter data_vencimento de volta para string (ou manter como está se for serializável)
+        df['data_vencimento'] = df['data_vencimento'].astype(str)
 
         return JsonResponse(df.to_dict(orient='records'), safe=False)
 
     except Exception as e:
         return JsonResponse({'mensagem': f'Erro ao buscar empresas: {str(e)}'}, status=500)
+
 
 
 
@@ -369,142 +400,590 @@ from django.http import JsonResponse, HttpResponse
 from sqlalchemy import create_engine
 from requests_pkcs12 import post
 import pycurl
+#ESTE É O CERTO
+# --------------------------
+# 2. VIEW: GERAR GUIAS DCTFWEB
+# --------------------------
+import base64
+import json
+import os
+import tempfile
+import zipfile
+import re
+import pandas as pd
+from io import BytesIO
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse, HttpResponse
+from sqlalchemy import create_engine
+from requests_pkcs12 import post
+import pycurl
+from PyPDF2 import PdfReader
+from datetime import datetime
+import urllib.parse
+import pymysql
+import traceback
+import ssl
+import cryptography
+from cryptography.hazmat.primitives.serialization import pkcs12
+from urllib.parse import quote_plus
+import os
+from dotenv import load_dotenv
+# Configurações de Credenciais
+SERPRO_CONSUMER_KEY = "QQzNZnYfhaMRRxJELAtHEd6CNXwa"
+SERPRO_CONSUMER_SECRET = "8DfDDQYme4MfWpKYy1E4EgmSzkMa"
+
+# Use as variáveis de ambiente para certificado e senha
+CERTIFICADO_BASE64 = os.getenv('CERTIFICADO_BASE64', '')
+CERTIFICADO_SENHA = os.getenv('SENHA_CERTIFICADO', '')
+
+# Configurações de Banco de Dados
+load_dotenv()  # Garanta que o .env será carregado mesmo no deploy
+
+DB_USER = os.getenv('DB_USER')
+DB_PASSWORD = quote_plus(os.getenv('DB_PASSWORD'))
+DB_HOST = os.getenv('DB_HOST')
+DB_NAME = os.getenv('DB_NAME')
+
+# Função auxiliar para carregar o certificado
+def carregar_certificado(certificado_base64, senha):
+    try:
+        # Decodificar o certificado base64
+        certificado_bytes = base64.b64decode(certificado_base64)
+        
+        # Tentar carregar o certificado
+        private_key, cert, ca_certs = pkcs12.load_key_and_certificates(
+            certificado_bytes, 
+            senha.encode('utf-8') if senha else None
+        )
+        
+        # Criar arquivo temporário para o certificado
+        with tempfile.NamedTemporaryFile(suffix=".pfx", delete=False) as temp_cert_file:
+            temp_cert_file.write(certificado_bytes)
+            temp_cert_path = temp_cert_file.name
+        
+        return temp_cert_path
+    except Exception as e:
+        print(f"Erro ao carregar certificado: {e}")
+        traceback.print_exc()
+        return None
+
+def extrair_informacoes_pdf(pdf_bytes):
+    try:
+        print("Extraindo informações do PDF...")
+        
+        # Ler o PDF
+        pdf_stream = BytesIO(pdf_bytes)
+        pdf_reader = PdfReader(pdf_stream)
+        
+        # Extrair texto
+        texto_completo = ""
+        for pagina in pdf_reader.pages:
+            texto_completo += pagina.extract_text()
+            
+        # Buscar data de pagamento usando expressões regulares
+        data_pagamento = None
+        padrao_data = r"Pagar este documento até\s*(\d{2}/\d{2}/\d{4})"
+        match_data = re.search(padrao_data, texto_completo)
+        if match_data:
+            data_pagamento = match_data.group(1)
+            
+        # Buscar valor total do documento
+        valor_documento = None
+        padrao_valor = r"Valor Total do Documento\s*([0-9.,]+)"
+        match_valor = re.search(padrao_valor, texto_completo)
+        if match_valor:
+            valor_documento = match_valor.group(1)
+            
+        # Se não encontrar com o padrão acima, tenta outro formato
+        if not valor_documento:
+            padrao_valor_alt = r"(\d{1,3}(?:\.\d{3})*,\d{2})\s*$"
+            linhas = texto_completo.split("\n")
+            for linha_texto in linhas:
+                if "Valor Total do Documento" in linha_texto:
+                    match_valor_alt = re.search(padrao_valor_alt, linha_texto)
+                    if match_valor_alt:
+                        valor_documento = match_valor_alt.group(1)
+                        break
+        
+        print(f"Dados extraídos:")
+        print(f"- Data de pagamento: {data_pagamento or 'Não encontrada'}")
+        print(f"- Valor total: {valor_documento or 'Não encontrado'}")
+        
+        return {
+            'data_pagamento': data_pagamento,
+            'valor_documento': valor_documento
+        }
+    except Exception as e:
+        print(f"Erro ao extrair informações do PDF: {str(e)}")
+        traceback.print_exc()
+        return None
+
+def converter_data(data_str):
+    if data_str:
+        try:
+            data_obj = datetime.strptime(data_str, '%d/%m/%Y')
+            return data_obj.strftime('%Y-%m-%d')
+        except ValueError:
+            return None
+    return None
+
+def formatar_valor(valor_str):
+    if valor_str:
+        try:
+            valor_limpo = valor_str.replace('.', '').replace(',', '.')
+            return float(valor_limpo)
+        except ValueError:
+            return None
+    return None
+# --------------------------
+# 2. VIEW: GERAR GUIAS DCTFWEB
+# --------------------------
+import base64
+import json
+import os
+import tempfile
+import zipfile
+import re
+import pandas as pd
+from io import BytesIO
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse, HttpResponse
+from sqlalchemy import create_engine, text
+from requests_pkcs12 import post
+import pycurl
+from PyPDF2 import PdfReader
+from datetime import datetime
+import urllib.parse
+import pymysql
+import traceback
+import ssl
+import cryptography
+from cryptography.hazmat.primitives.serialization import pkcs12
+from urllib.parse import quote_plus
+
+# Configurações de Credenciais
+SERPRO_CONSUMER_KEY = "QQzNZnYfhaMRRxJELAtHEd6CNXwa"
+SERPRO_CONSUMER_SECRET = "8DfDDQYme4MfWpKYy1E4EgmSzkMa"
+
+# Use as variáveis de ambiente para certificado e senha
+CERTIFICADO_BASE64 = os.getenv('CERTIFICADO_BASE64', '')
+CERTIFICADO_SENHA = os.getenv('SENHA_CERTIFICADO', '')
+
+# Configurações de Banco de Dados
+DB_USER = os.getenv('DB_USER', 'root')
+DB_PASSWORD = quote_plus(os.getenv('DB_PASSWORD', ''))  # Escapa caracteres especiais
+DB_HOST = os.getenv('DB_HOST', 'localhost')
+DB_NAME = os.getenv('DB_NAME', 'comece')
+
+# Função auxiliar para carregar o certificado
+def carregar_certificado(certificado_base64, senha):
+    try:
+        # Decodificar o certificado base64
+        certificado_bytes = base64.b64decode(certificado_base64)
+        
+        # Tentar carregar o certificado
+        private_key, cert, ca_certs = pkcs12.load_key_and_certificates(
+            certificado_bytes, 
+            senha.encode('utf-8') if senha else None
+        )
+        
+        # Criar arquivo temporário para o certificado
+        with tempfile.NamedTemporaryFile(suffix=".pfx", delete=False) as temp_cert_file:
+            temp_cert_file.write(certificado_bytes)
+            temp_cert_path = temp_cert_file.name
+        
+        return temp_cert_path
+    except Exception as e:
+        print(f"Erro ao carregar certificado: {e}")
+        traceback.print_exc()
+        return None
+
+def extrair_informacoes_pdf(pdf_bytes):
+    try:
+        print("Extraindo informações do PDF...")
+        
+        # Ler o PDF
+        pdf_stream = BytesIO(pdf_bytes)
+        pdf_reader = PdfReader(pdf_stream)
+        
+        # Extrair texto
+        texto_completo = ""
+        for pagina in pdf_reader.pages:
+            texto_completo += pagina.extract_text()
+            
+        # Buscar data de pagamento usando expressões regulares
+        data_pagamento = None
+        padrao_data = r"Pagar este documento até\s*(\d{2}/\d{2}/\d{4})"
+        match_data = re.search(padrao_data, texto_completo)
+        if match_data:
+            data_pagamento = match_data.group(1)
+            
+        # Buscar valor total do documento
+        valor_documento = None
+        padrao_valor = r"Valor Total do Documento\s*([0-9.,]+)"
+        match_valor = re.search(padrao_valor, texto_completo)
+        if match_valor:
+            valor_documento = match_valor.group(1)
+            
+        # Se não encontrar com o padrão acima, tenta outro formato
+        if not valor_documento:
+            padrao_valor_alt = r"(\d{1,3}(?:\.\d{3})*,\d{2})\s*$"
+            linhas = texto_completo.split("\n")
+            for linha_texto in linhas:
+                if "Valor Total do Documento" in linha_texto:
+                    match_valor_alt = re.search(padrao_valor_alt, linha_texto)
+                    if match_valor_alt:
+                        valor_documento = match_valor_alt.group(1)
+                        break
+        
+        print(f"Dados extraídos:")
+        print(f"- Data de pagamento: {data_pagamento or 'Não encontrada'}")
+        print(f"- Valor total: {valor_documento or 'Não encontrado'}")
+        
+        return {
+            'data_pagamento': data_pagamento,
+            'valor_documento': valor_documento
+        }
+    except Exception as e:
+        print(f"Erro ao extrair informações do PDF: {str(e)}")
+        traceback.print_exc()
+        return None
+
+def converter_data(data_str):
+    if data_str:
+        try:
+            data_obj = datetime.strptime(data_str, '%d/%m/%Y')
+            return data_obj.strftime('%Y-%m-%d')
+        except ValueError:
+            return None
+    return None
+
+def formatar_valor(valor_str):
+    if valor_str:
+        try:
+            valor_limpo = valor_str.replace('.', '').replace(',', '.')
+            return float(valor_limpo)
+        except ValueError:
+            return None
+    return None
 
 @csrf_exempt
 def dctfweb_emitir_guias(request):
-    if request.method != 'POST':
-        return JsonResponse({'mensagem': 'Método não permitido'}, status=405)
-
+    temp_cert_path = None
     try:
-        body = json.loads(request.body)
+        # Log inicial para rastrear o início do processamento
+        print("Iniciando processamento de emissão de guias DCTFWEB")
+
+        # Captura detalhada do corpo da requisição
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError as json_err:
+            print(f"Erro ao decodificar JSON: {json_err}")
+            return JsonResponse({
+                'mensagem': 'Corpo da requisição inválido',
+                'erro_detalhado': str(json_err)
+            }, status=400)
+
         cnpjs = body.get('cnpjs', [])
         competencia = body.get('competencia', '')  # Ex: "04/2025"
 
-        if not cnpjs or not competencia:
-            return JsonResponse({'mensagem': 'Informe CNPJs e competência'}, status=400)
+        # Validações iniciais
+        if not cnpjs:
+            print("Nenhum CNPJ fornecido")
+            return JsonResponse({'mensagem': 'Informe pelo menos um CNPJ'}, status=400)
+
+        if not competencia:
+            print("Competência não informada")
+            return JsonResponse({'mensagem': 'Informe a competência'}, status=400)
 
         try:
             mes, ano = competencia.split('/')
         except ValueError:
+            print(f"Formato de competência inválido: {competencia}")
             return JsonResponse({'mensagem': 'Competência inválida. Use o formato MM/AAAA'}, status=400)
 
+        # Log de configurações
+        print(f"Processando CNPJs: {cnpjs}")
+        print(f"Competência: {mes}/{ano}")
 
+        # Carregar certificado
+        temp_cert_path = carregar_certificado(CERTIFICADO_BASE64, CERTIFICADO_SENHA)
+        if not temp_cert_path:
+            return JsonResponse({
+                'mensagem': 'Falha ao processar certificado',
+            }, status=500)
+
+        # Configurações de autenticação
         def converter_base64(credenciais):
             return base64.b64encode(credenciais.encode("utf8")).decode("utf8")
 
         headers_auth = {
-            "Authorization": "Basic " + converter_base64("QQzNZnYfhaMRRxJELAtHEd6CNXwa:8DfDDQYme4MfWpKYy1E4EgmSzkMa"),
+            "Authorization": "Basic " + converter_base64(f"{SERPRO_CONSUMER_KEY}:{SERPRO_CONSUMER_SECRET}"),
             "role-type": "TERCEIROS",
             "content-type": "application/x-www-form-urlencoded"
         }
         body_auth = {'grant_type': 'client_credentials'}
 
-        certificado_base64 = os.getenv("CERTIFICADO_BASE64")
-        if not certificado_base64:
-            return JsonResponse({'mensagem': 'CERTIFICADO_BASE64 não definido'}, status=500)
-
-        # Cria arquivo temporário .pfx
-        with tempfile.NamedTemporaryFile(suffix=".pfx", delete=False) as temp_cert_file:
-            temp_cert_file.write(base64.b64decode(certificado_base64))
-            temp_cert_path = temp_cert_file.name
-
         try:
+            # Autenticação SERPRO
             response = post(
                 "https://autenticacao.sapi.serpro.gov.br/authenticate",
                 data=body_auth,
                 headers=headers_auth,
                 verify=True,
                 pkcs12_filename=temp_cert_path,
-                pkcs12_password=senha
+                pkcs12_password=CERTIFICADO_SENHA
             )
+        except Exception as auth_err:
+            print(f"Erro durante autenticação: {auth_err}")
+            traceback.print_exc()
+            return JsonResponse({
+                'mensagem': 'Falha na autenticação',
+                'erro_detalhado': str(auth_err)
+            }, status=500)
         finally:
-            # Apaga o .pfx temporário após a requisição
-            os.remove(temp_cert_path)
-
+            # Sempre remover o arquivo temporário, se existir
+            if temp_cert_path and os.path.exists(temp_cert_path):
+                os.remove(temp_cert_path)
 
         if response.status_code != 200:
+            print(f"Falha na autenticação SERPRO: {response.content}")
             return JsonResponse({'mensagem': 'Falha na autenticação com a SERPRO'}, status=500)
 
         tokens = json.loads(response.content.decode())
         token = tokens['access_token']
         jwt_token = tokens['jwt_token']
 
-        engine = create_engine(config('DATABASE_URL'))
+        # Configuração de conexão do banco de dados com tratamento de erros
+        try:
+            # Codificar senha para URL
+            senha_db = urllib.parse.quote_plus(DB_PASSWORD)
+            
+            # Criar engine de conexão
+            engine = create_engine(f"mysql+pymysql://{DB_USER}:{senha_db}@{DB_HOST}:3306/{DB_NAME}")
+            
+            # Testar conexão
+            with engine.connect() as connection:
+                print("Conexão com banco de dados estabelecida com sucesso")
+        except Exception as db_err:
+            print(f"Erro de conexão com banco de dados: {db_err}")
+            return JsonResponse({
+                'mensagem': 'Falha na conexão com banco de dados',
+                'erro_detalhado': str(db_err)
+            }, status=500)
+
+        # Obter lista de empresas
         cnpjs_str = ",".join(f"'{cnpj}'" for cnpj in cnpjs)
         query = f"SELECT cnpj, razaosocial FROM departamento_pessoal WHERE cnpj IN ({cnpjs_str})"
-        df = pd.read_sql(query, con=engine)
-        empresas = df.to_dict(orient='records')
+        
+        try:
+            df = pd.read_sql(query, con=engine)
+            empresas = df.to_dict(orient='records')
+        except Exception as query_err:
+            print(f"Erro ao executar consulta de empresas: {query_err}")
+            return JsonResponse({
+                'mensagem': 'Falha ao consultar empresas',
+                'erro_detalhado': str(query_err)
+            }, status=500)
 
+        # Processamento de guias
         with tempfile.TemporaryDirectory() as temp_dir:
             zip_path = os.path.join(temp_dir, 'dctfweb_guias.zip')
             with zipfile.ZipFile(zip_path, 'w') as zipf:
                 for emp in empresas:
-                    cnpj_original = emp['cnpj']
-                    cnpj = re.sub(r'\D', '', cnpj_original)  # Limpar pontuação
-                    razao = emp['razaosocial'].replace(' ', '_').replace('/', '_')
+                    try:
+                        cnpj_original = emp['cnpj']
+                        cnpj = re.sub(r'\D', '', cnpj_original)  # Limpar pontuação
+                        razao = emp['razaosocial'].replace(' ', '_').replace('/', '_')
 
-                    dados_pedido = {
-                        "contratante": {"numero": "90878448000103", "tipo": 2},
-                        "autorPedidoDados": {"numero": "90878448000103", "tipo": 2},
-                        "contribuinte": {"numero": cnpj, "tipo": 2},
-                        "pedidoDados": {
-                            "idSistema": "DCTFWEB",
-                            "idServico": "GERARGUIA31",
-                            "versaoSistema": "1.0",
-                            "dados": json.dumps({"categoria": 40, "anoPA": ano, "mesPA": mes})
+                        dados_pedido = {
+                            "contratante": {"numero": "90878448000103", "tipo": 2},
+                            "autorPedidoDados": {"numero": "90878448000103", "tipo": 2},
+                            "contribuinte": {"numero": cnpj, "tipo": 2},
+                            "pedidoDados": {
+                                "idSistema": "DCTFWEB",
+                                "idServico": "GERARGUIA31",
+                                "versaoSistema": "1.0",
+                                "dados": json.dumps({"categoria": 40, "anoPA": ano, "mesPA": mes})
+                            }
                         }
-                    }
 
-                    headers = [
-                        'jwt_token:' + jwt_token,
-                        'Authorization: Bearer ' + token,
-                        'Content-Type: application/json',
-                        'Accept: text/plain'
-                    ]
+                        headers = [
+                            'jwt_token:' + jwt_token,
+                            'Authorization: Bearer ' + token,
+                            'Content-Type: application/json',
+                            'Accept: text/plain'
+                        ]
 
-                    buffer = BytesIO()
-                    c = pycurl.Curl()
-                    c.setopt(c.URL, 'https://gateway.apiserpro.serpro.gov.br/integra-contador/v1/Emitir')
-                    c.setopt(c.POSTFIELDS, json.dumps(dados_pedido))
-                    c.setopt(c.HTTPHEADER, headers)
-                    c.setopt(c.WRITEDATA, buffer)
-                    c.perform()
-                    c.close()
+                        buffer = BytesIO()
+                        c = pycurl.Curl()
+                        c.setopt(c.URL, 'https://gateway.apiserpro.serpro.gov.br/integra-contador/v1/Emitir')
+                        c.setopt(c.POSTFIELDS, json.dumps(dados_pedido))
+                        c.setopt(c.HTTPHEADER, headers)
+                        c.setopt(c.WRITEDATA, buffer)
+                        c.perform()
+                        c.close()
 
-                    resposta_json = json.loads(buffer.getvalue().decode())
+                        resposta_json = json.loads(buffer.getvalue().decode())
 
-                    # Log de mensagens da API
-                    mensagens = resposta_json.get('mensagens', [])
-                    if mensagens:
-                        print(f"⚠️ Mensagem(s) da API para {cnpj_original}:")
-                        for msg in mensagens:
-                            print(f"  - [{msg.get('codigo')}] {msg.get('texto')}")
+                        # Processamento de mensagens da API
+                        mensagens = resposta_json.get('mensagens', [])
+                        if mensagens:
+                            print(f"Mensagens para {cnpj_original}:")
+                            for msg in mensagens:
+                                print(f"  - [{msg.get('codigo')}] {msg.get('texto')}")
 
-                    dados = json.loads(resposta_json.get('dados', '{}'))
-                    pdf_base64 = dados.get('PDFByteArrayBase64')
+                        dados = json.loads(resposta_json.get('dados', '{}'))
+                        pdf_base64 = dados.get('PDFByteArrayBase64')
 
-                    if not pdf_base64:
-                        continue  # Pula se não houver guia
+                        if not pdf_base64:
+                            print(f"Nenhum PDF encontrado para {cnpj_original}")
+                            continue
 
-                    pdf_bin = base64.b64decode(pdf_base64)
-                    nome_arquivo = f"{razao}_{cnpj}.pdf"
-                    caminho_pdf = os.path.join(temp_dir, nome_arquivo)
+                        pdf_bin = base64.b64decode(pdf_base64)
+                        data_geracao = datetime.today().strftime('%Y-%m-%d')  # Ajuste o formato se necessário
 
-                    with open(caminho_pdf, 'wb') as f:
-                        f.write(pdf_bin)
+                        # Extrair informações do PDF
+                        dados_pdf = extrair_informacoes_pdf(pdf_bin)
+                        if dados_pdf:
+                            # Preparar dados para inserção/atualização
+                            data_vencimento = converter_data(dados_pdf['data_pagamento'])
+                            valor = formatar_valor(dados_pdf['valor_documento'])
+                            situacao = "GERADO"
+                            pagamento = "LANÇADO"
+                            
+                            try:
+                                with engine.connect() as conn:
+                                    # Verificar se já existe registro
+                                    select_query = text("SELECT * FROM departamento_pessoal WHERE cnpj = :cnpj")
+                                    resultado = conn.execute(select_query, {'cnpj': cnpj_original})
+                                    
+                                    if resultado.rowcount > 0:
+                                        # Atualizar registro existente
+                                        update_query = text("""
+                                        UPDATE departamento_pessoal 
+                                        SET data_vencimento = :data_vencimento, 
+                                            situacao = :situacao, 
+                                            valor = :valor, 
+                                            pagamento = :pagamento
+                                        WHERE cnpj = :cnpj
+                                        """)
+                                        
+                                        conn.execute(update_query, {
+                                            'data_vencimento': data_vencimento,
+                                            'situacao': situacao,
+                                            'valor': valor,
+                                            'pagamento': pagamento,
+                                            'cnpj': cnpj_original
+                                        })
+                                        print(f"Registro atualizado para {cnpj_original}")
+                                    else:
+                                        # Inserir novo registro
+                                        insert_query = text("""
+                                        INSERT INTO departamento_pessoal 
+                                        (razaosocial, cnpj, data_vencimento, situacao, valor, pagamento)
+                                        VALUES 
+                                        (:razaosocial, :cnpj, :data_vencimento, :situacao, :valor, :pagamento)
+                                        """)
+                                        
+                                        conn.execute(insert_query, {
+                                            'razaosocial': razao.replace('_', ' '),
+                                            'cnpj': cnpj_original,
+                                            'data_vencimento': data_vencimento,
+                                            'situacao': situacao,
+                                            'valor': valor,
+                                            'pagamento': pagamento
+                                        })
+                                        print(f"Novo registro inserido para {cnpj_original}")
+                                    
+                                    # Commit da transação
+                                    conn.commit()
+                            except Exception as db_insert_err:
+                                print(f"Erro ao salvar dados no banco para {cnpj_original}: {db_insert_err}")
+                                traceback.print_exc()
 
-                    zipf.write(caminho_pdf, arcname=nome_arquivo)
+                        # Salvar PDF
+                        nome_arquivo = f"{razao}_{cnpj}.pdf"
+                        caminho_pdf = os.path.join(temp_dir, nome_arquivo)
 
+                        with open(caminho_pdf, 'wb') as f:
+                            f.write(pdf_bin)
+
+                        zipf.write(caminho_pdf, arcname=nome_arquivo)
+
+                    except Exception as erro_processamento:
+                        print(f"Erro no processamento de {cnpj_original}: {erro_processamento}")
+                        traceback.print_exc()
+                        continue
+
+            # Retornar arquivo ZIP
             with open(zip_path, 'rb') as f:
                 response = HttpResponse(f.read(), content_type='application/zip')
                 response['Content-Disposition'] = 'attachment; filename="dctfweb_guias.zip"'
                 return response
 
+    except Exception as erro_geral:
+        # Log de erro detalhado
+        print("Erro crítico no processamento:")
+        print(traceback.format_exc())
+        
+        # Remover arquivo temporário, se existir
+        if temp_cert_path and os.path.exists(temp_cert_path):
+            os.remove(temp_cert_path)
+        
+        return JsonResponse({
+            'mensagem': 'Erro interno no processamento',
+            'erro_detalhado': str(erro_geral)
+        }, status=500)
+@csrf_exempt
+def atualizar_status_postado(request):
+    if request.method != 'POST':
+        return JsonResponse({'mensagem': 'Método não permitido'}, status=405)
+    
+    try:
+        body = json.loads(request.body)
+        cnpj = body.get('cnpj')
+        postado = body.get('postado')
+
+        if not cnpj or postado is None:
+            return JsonResponse({'mensagem': 'CNPJ e status de postado são obrigatórios'}, status=400)
+
+        # Conectar ao banco de dados
+        engine = create_engine(f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:3306/{DB_NAME}")
+        
+        with engine.connect() as conn:
+            # Atualizar o status de postado para o CNPJ específico
+            update_query = text("""
+            UPDATE departamento_pessoal 
+            SET postado = :postado
+            WHERE cnpj = :cnpj
+            """)
+            
+            result = conn.execute(update_query, {
+                'postado': 'Sim' if postado else 'Não',
+                'cnpj': cnpj
+            })
+            
+            # Commit da transação
+            conn.commit()
+
+            if result.rowcount > 0:
+                return JsonResponse({
+                    'mensagem': 'Status atualizado com sucesso',
+                    'postado': 'Sim' if postado else 'Não'
+                })
+            else:
+                return JsonResponse({
+                    'mensagem': 'Nenhum registro encontrado para atualização',
+                    'status': 404
+                }, status=404)
+
     except Exception as e:
-        return JsonResponse({'mensagem': f'Erro ao gerar guias: {str(e)}'}, status=500)
-
-
-
+        print(f"Erro ao atualizar status postado: {str(e)}")
+        return JsonResponse({
+            'mensagem': 'Erro interno ao atualizar status',
+            'erro_detalhado': str(e)
+        }, status=500)
 
 
 #GERAR RECIBO DE TRANSMISSÃO
