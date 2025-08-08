@@ -886,7 +886,9 @@ def dctfweb_emitir_guias(request):
                                 traceback.print_exc()
 
                         # Salvar PDF
-                        nome_arquivo = f"{razao}_{cnpj}.pdf"
+# Salvar PDF com nome detalhado
+                        cod_competencia = f"{mes}{ano}"
+                        nome_arquivo = f"{razao}_CNPJ-{cnpj_original}_GUIA-DCTFWEB_{cod_competencia}.pdf"
                         caminho_pdf = os.path.join(temp_dir, nome_arquivo)
 
                         with open(caminho_pdf, 'wb') as f:
