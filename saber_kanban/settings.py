@@ -21,27 +21,27 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 
 # AJUSTE AQUI PARA PRODUÇÃO
-DEBUG = False
-## AQUI ALTEREI O IP DA MAQUINA LOCAL
-ALLOWED_HOSTS = [
-    config('DJANGO_ALLOWED_HOST')
-]
-CORS_ALLOWED_ORIGINS = [
-    config("DJANGO_CORS_ORIGIN")
-]
-CORS_ALLOW_CREDENTIALS = True
-
-CSRF_TRUSTED_ORIGINS = [
-    "https://comece.dev",
-]
-
-# DEBUG = True
-
-# ALLOWED_HOSTS = ['*']  # Permite todos os hosts, mas é recomendado restringir em produção
-
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:3000"
+# DEBUG = False
+# ## AQUI ALTEREI O IP DA MAQUINA LOCAL
+# ALLOWED_HOSTS = [
+#     config('DJANGO_ALLOWED_HOST')
 # ]
+# CORS_ALLOWED_ORIGINS = [
+#     config("DJANGO_CORS_ORIGIN")
+# ]
+# CORS_ALLOW_CREDENTIALS = True
+
+# CSRF_TRUSTED_ORIGINS = [
+#     "https://comece.dev",
+# ]
+
+DEBUG = True
+
+ALLOWED_HOSTS = ['*']  # Permite todos os hosts, mas é recomendado restringir em produção
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000"
+]
 
 
 from decouple import config

@@ -1,0 +1,215 @@
+
+
+.header-icon {
+  font-size: 28px;
+  margin-right: 12px;
+  color: #4e73df;
+}
+
+.header-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 25px;
+}
+
+h3 {
+  font-weight: 700;
+  color: #004085;
+  font-size: 24px;
+  margin: 0;
+}
+
+.table {
+  margin-top: 20px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.table thead {
+  background-color: #0073e6;
+  color: white;
+}
+
+.table td, .table th {
+  vertical-align: middle;
+  padding: 12px;
+  font-size: 14px;
+}
+
+.badge {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 12px;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-success,
+.btn-dark,
+.btn-warning {
+  border: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-success:hover,
+.btn-dark:hover,
+.btn-warning:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.btn-outline-info {
+  border-color: #0073e6;
+  color: #0073e6;
+}
+
+.alert {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.form-label {
+  font-weight: 600;
+  color: #333;
+}
+
+.form-select {
+  font-weight: 500;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
+.d-flex .btn {
+  min-width: 170px;
+}.header-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-icon {
+  font-size: 34px;
+  color: #0073e6;
+}
+.titulo-pagina {
+  font-size: 25px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0;
+  letter-spacing: 0.4px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.titulo-pagina::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 40px;
+  height: 3px;
+  background-color: #0073e6;
+  border-radius: 2px;
+}
+/* No arquivo dctfweb.css */
+/* Estilos para o modal customizado */
+.modal-custom {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1250;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1040;
+}
+
+.modal-container {
+  width: 100%;
+  max-width: 1000px;
+  background-color: white;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 1250;
+  position: relative;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #dee2e6;
+  margin-left: 8px;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  margin-left: 8px;
+}
+
+.modal-body {
+  padding: 1rem;
+  margin-left: 20px;  
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 1rem;
+  border-top: 1px solid #dee2e6;
+  gap: 0.5rem;
+  
+}
+
+/* Estilo para o botão de fechar */
+.btn-close {
+  background: transparent;
+  border: 0;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.5;
+  color: #0073e6;
+  margin-right: 50px;
+}
+
+.btn-close:hover {
+  opacity: 1;
+  color: #a82c2c;
+    margin-right: 50px;
+
+}
+
+.btn-close::before {
+  content: "×";
+    margin-right: 50px;
+
+}
+
+/* Quando o modal está aberto, impedir rolagem do body */
+body.modal-open {
+  overflow: hidden;
+}

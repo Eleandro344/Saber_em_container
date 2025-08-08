@@ -60,6 +60,13 @@ const Sidebar = () => {
         <i className="fa-solid fa-dollar-sign me-2 fa-2x"></i>
           <span className="sidebar-info">Pendecia Fiscal</span>
         </Link>   
+             <Link
+          to="/das"
+          className={`nav-link nav-link-beat ${location.pathname === '/Das' ? 'active' : ''}`}
+        >
+        <i className="fa-solid fa-dollar-sign me-2 fa-2x"></i>
+          <span className="sidebar-info">PGDAS</span>
+        </Link>   
       </nav>
     </div>
   );

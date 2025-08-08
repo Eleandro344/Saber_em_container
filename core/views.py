@@ -2362,3 +2362,31 @@ def processar_pdfs(request):
             'success': False, 
             'error': str(e)
         }, status=500)
+    
+    #aqui começamos a DAS
+
+# No views.py
+from django.http import JsonResponse
+from sqlalchemy import create_engine, text
+from decouple import config
+import pandas as pd
+import json
+
+def empresas_das(request):
+    try:
+        engine = create_engine(config('DATABASE_URL'))
+        
+        df = pd.read_sql("""
+            SELECT 
+                razaosocial, 
+                cnpj
+            FROM empresas
+        """, con=engine)
+        
+        data = df.to_dict(orient='records')
+        
+        
+        return JsonResponse(data, safe=False)
+    except Exception as e:
+        print("Erro ao carregar empresas:", str(e))  # E este
+        return JsonResponse({'erro': str(e)}, status=500)
