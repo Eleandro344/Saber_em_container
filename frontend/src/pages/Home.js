@@ -92,7 +92,7 @@ const Home = () => {
       className="alert alert-danger text-center"
         style={{ maxWidth: '600px', marginBottom: '30px' }}
       >
-        <strong>🆕 Novidade:</strong> A nova funcionalidade <strong>Pendência Fiscal</strong> já está disponível no menu!
+        <strong>🆕 Novidade:</strong> Olá  <strong> DP</strong>, o menu de DCTFWeb foi atualizado. Aproveite as novas funcionalidades!
       </div>
 
       {/* Botão para continuar */}

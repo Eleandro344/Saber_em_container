@@ -19,21 +19,28 @@ from decouple import config
 
 SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
-# DEBUG = True
 
-## AQUI ALTEREI O IP DA MAQUINA LOCAL
-## AQUI ALTEREI O IP DA MAQUINA LOCAL
-ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOST').split(',')
+# AJUSTE AQUI PARA PRODUÇÃO
+# DEBUG = False
+# ## AQUI ALTEREI O IP DA MAQUINA LOCAL
+# ALLOWED_HOSTS = [
+#     config('DJANGO_ALLOWED_HOST')
+# ]
+# CORS_ALLOWED_ORIGINS = [
+#     config("DJANGO_CORS_ORIGIN")
+# ]
+# CORS_ALLOW_CREDENTIALS = True
+
+# CSRF_TRUSTED_ORIGINS = [
+#     "https://comece.dev",
+# ]
+
+DEBUG = True
+
+ALLOWED_HOSTS = ['*']  # Permite todos os hosts, mas é recomendado restringir em produção
 
 CORS_ALLOWED_ORIGINS = [
-    config("DJANGO_CORS_ORIGIN"),
-    "http://localhost:3000",
-]
-
-CSRF_TRUSTED_ORIGINS = [
-    "https://comece.dev",
-    "https://saber-comece-frontend-437361930173.europe-west1.run.app",
+    "http://localhost:3000"
 ]
 
 
@@ -68,14 +75,19 @@ REST_FRAMEWORK = {
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",  # deve vir antes de CommonMiddleware
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    'corsheaders.middleware.CorsMiddleware',
-
 ]
+
+
+SESSION_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_SECURE = True
 
 ROOT_URLCONF = "saber_kanban.urls"
 
@@ -173,10 +185,11 @@ USE_I18N = True
 USE_TZ = True
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),  # ou mais, ex: 1 hora
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=1440),  # ou mais, ex: 1 hora
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
+
 
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
