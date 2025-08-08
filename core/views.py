@@ -3,7 +3,28 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.conf import settings
-
+import base64
+import json
+import os
+import tempfile
+import zipfile
+import re
+import pandas as pd
+from io import BytesIO
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse, HttpResponse
+from sqlalchemy import create_engine, text
+from requests_pkcs12 import post
+import pycurl
+from PyPDF2 import PdfReader
+from datetime import datetime
+import urllib.parse
+import pymysql
+import traceback
+import ssl
+import cryptography
+from cryptography.hazmat.primitives.serialization import pkcs12
+from urllib.parse import quote_plus
 # Django REST Framework
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets
@@ -435,14 +456,13 @@ SERPRO_CONSUMER_SECRET = "8DfDDQYme4MfWpKYy1E4EgmSzkMa"
 # Use as variáveis de ambiente para certificado e senha
 CERTIFICADO_BASE64 = os.getenv('CERTIFICADO_BASE64', '')
 CERTIFICADO_SENHA = os.getenv('SENHA_CERTIFICADO', '')
+from urllib.parse import quote_plus
 
 # Configurações de Banco de Dados
-load_dotenv()  # Garanta que o .env será carregado mesmo no deploy
-
-DB_USER = os.getenv('DB_USER')
-DB_PASSWORD = quote_plus(os.getenv('DB_PASSWORD'))
-DB_HOST = os.getenv('DB_HOST')
-DB_NAME = os.getenv('DB_NAME')
+DB_USER = os.getenv('DB_USER', 'root')
+DB_PASSWORD = quote_plus(os.getenv('DB_PASSWORD', ''))
+DB_HOST = os.getenv('DB_HOST', 'localhost')
+DB_NAME = os.getenv('DB_NAME', 'Comece')
 
 # Função auxiliar para carregar o certificado
 def carregar_certificado(certificado_base64, senha):
@@ -538,42 +558,10 @@ def formatar_valor(valor_str):
 # --------------------------
 # 2. VIEW: GERAR GUIAS DCTFWEB
 # --------------------------
-import base64
-import json
-import os
-import tempfile
-import zipfile
-import re
-import pandas as pd
-from io import BytesIO
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse, HttpResponse
-from sqlalchemy import create_engine, text
-from requests_pkcs12 import post
-import pycurl
-from PyPDF2 import PdfReader
-from datetime import datetime
-import urllib.parse
-import pymysql
-import traceback
-import ssl
-import cryptography
-from cryptography.hazmat.primitives.serialization import pkcs12
-from urllib.parse import quote_plus
+
 
 # Configurações de Credenciais
-SERPRO_CONSUMER_KEY = "QQzNZnYfhaMRRxJELAtHEd6CNXwa"
-SERPRO_CONSUMER_SECRET = "8DfDDQYme4MfWpKYy1E4EgmSzkMa"
 
-# Use as variáveis de ambiente para certificado e senha
-CERTIFICADO_BASE64 = os.getenv('CERTIFICADO_BASE64', '')
-CERTIFICADO_SENHA = os.getenv('SENHA_CERTIFICADO', '')
-
-# Configurações de Banco de Dados
-DB_USER = os.getenv('DB_USER', 'root')
-DB_PASSWORD = quote_plus(os.getenv('DB_PASSWORD', ''))  # Escapa caracteres especiais
-DB_HOST = os.getenv('DB_HOST', 'localhost')
-DB_NAME = os.getenv('DB_NAME', 'comece')
 
 # Função auxiliar para carregar o certificado
 def carregar_certificado(certificado_base64, senha):
@@ -756,21 +744,16 @@ def dctfweb_emitir_guias(request):
 
         # Configuração de conexão do banco de dados com tratamento de erros
         try:
-            # Codificar senha para URL
-            senha_db = urllib.parse.quote_plus(DB_PASSWORD)
-            
-            # Criar engine de conexão
-            engine = create_engine(f"mysql+pymysql://{DB_USER}:{senha_db}@{DB_HOST}:3306/{DB_NAME}")
+            # Usar a URL completa do .env
+            engine = create_engine(config('DATABASE_URL'))
             
             # Testar conexão
             with engine.connect() as connection:
-                print("Conexão com banco de dados estabelecida com sucesso")
-        except Exception as db_err:
-            print(f"Erro de conexão com banco de dados: {db_err}")
-            return JsonResponse({
-                'mensagem': 'Falha na conexão com banco de dados',
-                'erro_detalhado': str(db_err)
-            }, status=500)
+                print("Conexão bem-sucedida!")
+                
+        except Exception as e:
+            print(f"Erro de conexão: {e}")
+            raise
 
         # Obter lista de empresas
         cnpjs_str = ",".join(f"'{cnpj}'" for cnpj in cnpjs)
