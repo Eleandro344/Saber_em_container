@@ -1,12 +1,10 @@
-
-
-.header-icon {
+.dctfweb-page .header-icon {
   font-size: 28px;
   margin-right: 12px;
   color: #4e73df;
 }
 
-.header-wrapper {
+.dctfweb-page .header-wrapper {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -15,94 +13,84 @@
   margin-bottom: 25px;
 }
 
-h3 {
+.dctfweb-page h3 {
   font-weight: 700;
   color: #004085;
   font-size: 24px;
   margin: 0;
 }
 
-.table {
+.dctfweb-page .table {
   margin-top: 20px;
   border-radius: 10px;
   overflow: hidden;
+  width: 100%; /* ocupa toda a largura disponível */
+  table-layout: auto; /* permite ajuste automático das colunas */
 }
 
-.table thead {
-  background-color: #0073e6;
-  color: white;
-}
-
-.table td, .table th {
+.dctfweb-page .table td,
+.dctfweb-page .table th {
   vertical-align: middle;
   padding: 12px;
   font-size: 14px;
 }
 
-.badge {
+.dctfweb-page .badge {
   padding: 6px 12px;
   font-size: 12px;
   border-radius: 12px;
 }
 
-.btn-primary,
-.btn-secondary,
-.btn-success,
-.btn-dark,
-.btn-warning {
+.dctfweb-page .btn-primary,
+.dctfweb-page .btn-secondary,
+.dctfweb-page .btn-success,
+.dctfweb-page .btn-dark,
+.dctfweb-page .btn-warning {
   border: none;
   font-weight: 500;
   transition: all 0.3s ease;
 }
 
-.btn-primary:hover,
-.btn-secondary:hover,
-.btn-success:hover,
-.btn-dark:hover,
-.btn-warning:hover {
+.dctfweb-page .btn-primary:hover,
+.dctfweb-page .btn-secondary:hover,
+.dctfweb-page .btn-success:hover,
+.dctfweb-page .btn-dark:hover,
+.dctfweb-page .btn-warning:hover {
   opacity: 0.85;
   transform: translateY(-1px);
 }
 
-.btn-outline-info {
+.dctfweb-page .btn-outline-info {
   border-color: #0073e6;
   color: #0073e6;
 }
 
-.alert {
+.dctfweb-page .alert {
   font-weight: 500;
   font-size: 14px;
 }
 
-.form-label {
+.dctfweb-page .form-label {
   font-weight: 600;
   color: #333;
 }
 
-.form-select {
+.dctfweb-page .form-select {
   font-weight: 500;
   padding: 10px;
   border-radius: 8px;
 }
 
-input[type="checkbox"] {
+.dctfweb-page input[type="checkbox"] {
   width: 18px;
   height: 18px;
 }
 
-.d-flex .btn {
+.dctfweb-page .d-flex .btn {
   min-width: 170px;
-}.header-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 
-.header-icon {
-  font-size: 34px;
-  color: #0073e6;
-}
-.titulo-pagina {
+.dctfweb-page .titulo-pagina {
   font-size: 25px;
   font-weight: 700;
   color: #2c3e50;
@@ -111,7 +99,7 @@ input[type="checkbox"] {
   font-family: 'Poppins', sans-serif;
 }
 
-.titulo-pagina::after {
+.dctfweb-page .titulo-pagina::after {
   content: "";
   position: absolute;
   left: 0;
@@ -121,9 +109,8 @@ input[type="checkbox"] {
   background-color: #0073e6;
   border-radius: 2px;
 }
-/* No arquivo dctfweb.css */
-/* Estilos para o modal customizado */
-.modal-custom {
+
+.dctfweb-page .modal-custom {
   position: fixed;
   top: 0;
   left: 0;
@@ -135,7 +122,7 @@ input[type="checkbox"] {
   z-index: 1250;
 }
 
-.modal-overlay {
+.dctfweb-page .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -145,7 +132,7 @@ input[type="checkbox"] {
   z-index: 1040;
 }
 
-.modal-container {
+.dctfweb-page .modal-container {
   width: 100%;
   max-width: 1000px;
   background-color: white;
@@ -155,7 +142,7 @@ input[type="checkbox"] {
   position: relative;
 }
 
-.modal-header {
+.dctfweb-page .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -164,28 +151,26 @@ input[type="checkbox"] {
   margin-left: 8px;
 }
 
-.modal-title {
+.dctfweb-page .modal-title {
   margin: 0;
   font-size: 1.25rem;
   margin-left: 8px;
 }
 
-.modal-body {
+.dctfweb-page .modal-body {
   padding: 1rem;
   margin-left: 20px;  
 }
 
-.modal-footer {
+.dctfweb-page .modal-footer {
   display: flex;
   justify-content: flex-end;
   padding: 1rem;
   border-top: 1px solid #dee2e6;
   gap: 0.5rem;
-  
 }
 
-/* Estilo para o botão de fechar */
-.btn-close {
+.dctfweb-page .btn-close {
   background: transparent;
   border: 0;
   font-size: 1.5rem;
@@ -196,20 +181,17 @@ input[type="checkbox"] {
   margin-right: 50px;
 }
 
-.btn-close:hover {
+.dctfweb-page .btn-close:hover {
   opacity: 1;
   color: #a82c2c;
-    margin-right: 50px;
-
+  margin-right: 50px;
 }
 
-.btn-close::before {
+.dctfweb-page .btn-close::before {
   content: "×";
-    margin-right: 50px;
-
+  margin-right: 50px;
 }
 
-/* Quando o modal está aberto, impedir rolagem do body */
 body.modal-open {
   overflow: hidden;
 }

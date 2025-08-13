@@ -17,8 +17,6 @@ from core.views import listar_dividas
 from core.views import enviar_email_dividas
 from core.views import processar_pdfs
 from core.views import cadastrar_empresa
-from core.views import empresas_das 
-
 from core.views import EmpresaListView
 from core.views import CustomTokenObtainPairView  # ✅ Importe sua view correta
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -45,8 +43,9 @@ urlpatterns = [
     path('api/atualizar-status-postado/', views.atualizar_status_postado, name='atualizar_status_postado'),
     path('api/cadastrar-empresa/',cadastrar_empresa, name='cadastrar_empresa'),
     # ... outras rotas existentes ...
-    path('api/empresas-das/', views.empresas_das, name='empresas_das'),]
-
+    path('api/empresas-das/', views.empresas_das, name='empresas_das'),
+    path('api/enviar-email-nf/', views.enviar_email_nf, name='enviar_email_nf'),
+]
 # 
 
 

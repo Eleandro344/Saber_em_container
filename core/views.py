@@ -2390,3 +2390,100 @@ def empresas_das(request):
     except Exception as e:
         print("Erro ao carregar empresas:", str(e))  # E este
         return JsonResponse({'erro': str(e)}, status=500)
+    
+
+    #ENVIAR EMAIL DP
+
+# Adicionar no views.py
+import os
+from dotenv import load_dotenv
+base64_encoded = os.getenv("LOGOBASE_64")
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+@csrf_exempt
+def enviar_email_nf(request):
+    try:
+        # Obtém os dados
+        data = json.loads(request.body)
+        destinatario = data.get('destinatario')
+        assunto = data.get('assunto', 'Nota Fiscal')
+        corpo_html = data.get('corpo_html')
+        dados_funcionario = data.get('dados_funcionario', {})
+        
+        # Validações básicas
+        if not destinatario:
+            return JsonResponse({'success': False, 'error': 'Destinatário é obrigatório'}, status=400)
+        
+        if not corpo_html:
+            return JsonResponse({'success': False, 'error': 'Corpo do email é obrigatório'}, status=400)
+        
+        # Configurações diretas de e-mail
+        remetente = 'eleandro.martins@comecehub.com.br'
+        senhaemail = os.getenv("EMAIL_SENHA")
+        
+        # Base64 da logo (mesmo da função original)
+        import base64
+        from pathlib import Path
+
+        # Caminho para o logo
+        logo_path = Path("frontend/src/assets/logoemail.png")
+
+        # Converter para Base64
+        with open(logo_path, "rb") as img_file:
+            base64_encoded = base64.b64encode(img_file.read()).decode("utf-8")        
+        try:
+            # Configuração do servidor SMTP
+            server = smtplib.SMTP('smtp.gmail.com', 587)
+            server.ehlo()
+            server.starttls()
+            server.login(remetente, senhaemail)
+            
+            # Criar a mensagem
+            msg = MIMEMultipart('related')
+            msg['Subject'] = assunto
+            msg['From'] = remetente
+            msg['To'] = destinatario
+            
+            # Parte HTML
+            html_part = MIMEMultipart('alternative')
+            html_content = MIMEText(corpo_html, 'html', 'utf-8')
+            html_part.attach(html_content)
+            msg.attach(html_part)
+            
+            # LOGO EMBUTIDO
+            img_data = base64.b64decode(base64_encoded)
+            
+            # Anexar imagem
+            img = MIMEImage(img_data)
+            img.add_header('Content-ID', '<logo2>')
+            img.add_header('Content-Disposition', 'inline', filename='logoemail.png')
+            msg.attach(img)
+            
+            # Enviar e-mail
+            server.sendmail(remetente, [destinatario], msg.as_string())
+            server.quit()
+            
+            # Log do envio
+            nome_funcionario = dados_funcionario.get('nome', 'N/A')
+            valor = dados_funcionario.get('valor', 'N/A')
+            print(f"Email de NF enviado com sucesso para {destinatario} - Funcionário: {nome_funcionario} - Valor: {valor}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Email enviado com sucesso para {destinatario}'
+            })
+            
+        except Exception as smtp_error:
+            print(f"Erro SMTP: {str(smtp_error)}")
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'error': f'Erro no envio: {str(smtp_error)}'}, status=500)
+        
+    except Exception as e:
+        print(f"Erro geral: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'Erro interno: {str(e)}'
+        }, status=500)

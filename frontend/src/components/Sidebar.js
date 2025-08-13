@@ -64,9 +64,16 @@ const Sidebar = () => {
           to="/das"
           className={`nav-link nav-link-beat ${location.pathname === '/Das' ? 'active' : ''}`}
         >
-        <i className="fa-solid fa-dollar-sign me-2 fa-2x"></i>
+        <i className="fa-solid fa-money-bill-trend-up me-2 fa-2x"></i>
           <span className="sidebar-info">PGDAS</span>
-        </Link>   
+        </Link>  
+             <Link
+          to="/Enviaremaildp"
+          className={`nav-link nav-link-beat ${location.pathname === '/Enviaremaildp' ? 'active' : ''}`}
+        >
+        <i className="fa-solid fa-envelope-open-text me-2 fa-2x"></i>
+          <span className="sidebar-info">  Envio email DP</span>
+        </Link>           
       </nav>
     </div>
   );

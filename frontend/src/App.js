@@ -18,11 +18,11 @@ import IntegraContador from './pages/IntegraContador';
 import Dctfweb from './pages/Dctfweb'; // ✅ correto
 import Dividas from './pages/Dividas';
 import Das from './pages/Das';
-
+import Enviaremaildp from './pages/Enviaremaildp';
 
 const LayoutWrapper = ({ children }) => {
   const location = useLocation();
-  const hideHeaderRoutes = ['/login', '/kanban', '/tarefas', '/IntegraContador','/Dctfweb','/Dividas','/das'];
+  const hideHeaderRoutes = ['/login', '/kanban', '/tarefas', '/IntegraContador','/Dctfweb','/Dividas','/das','/Enviaremaildp'];
   const isHeaderHidden = hideHeaderRoutes.includes(location.pathname);
 
   return (
@@ -94,6 +94,7 @@ function App() {
             <Route path="/Dctfweb" element={<Dctfweb />} />
             <Route path="/Dividas" element={<Dividas />} />
             <Route path="/Das" element={<Das />} />
+            <Route path="/Enviaremaildp" element={<Enviaremaildp />} />
 
           </Route>
         </Routes>
