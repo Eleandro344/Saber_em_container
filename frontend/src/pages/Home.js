@@ -21,17 +21,29 @@ const Home = () => {
     'https://lottie.host/embed/45af3a4c-75e6-42ba-b74b-c9a98e1639a3/r2rPa6bgO4.json'
   ];
 
-  let username = 'usuário';
+let username = 'usuário';
 
-  if (token) {
-    try {
-      const decoded = jwtDecode(token);
-      username = decoded.first_name || decoded.username || decoded.sub || 'usuário';
-    } catch (e) {
-      console.error('Erro ao decodificar token:', e);
+console.log('TOKEN:', token);
+if (token) {
+  try {
+    const decoded = jwtDecode(token);
+    console.log('DECODED JWT:', decoded);
+
+    username = decoded.first_name || decoded.username || decoded.sub || 'usuário';
+
+    // 👇 Ajuste manual de nomes específicos
+    if (username === 'Amandacarissimi') {
+      username = 'Amanda Carissimi';
+    } else if (username === 'Matheusscheidt') {
+      username = 'Matheus Scheidt';
+          } else if (username === 'Maria') {
+      username = 'Maria Eduarda';
     }
-  }
 
+  } catch (e) {
+    console.error('Erro ao decodificar token:', e);
+  }
+}
   // useEffect para rotação das animações
   useEffect(() => {
     const intervalAnimacao = setInterval(() => {

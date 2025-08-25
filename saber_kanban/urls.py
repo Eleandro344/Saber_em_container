@@ -20,18 +20,21 @@ from core.views import cadastrar_empresa
 from core.views import EmpresaListView
 from core.views import CustomTokenObtainPairView  # ✅ Importe sua view correta
 from rest_framework_simplejwt.views import TokenRefreshView
+from core.views import pgdas_emitir_recibos
+from core.views import das_gerar
+from core.views import empresas_contabil
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),  # ✅ Corrigido
+    path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),  
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/', include('core.urls')), 
     path('api/empresas/', EmpresaListView.as_view(), name='listar_empresas'),
     path('api/empresas/adicionar/', views.adicionar_empresa, name='adicionar_empresa'),
     path('api/empresas/<str:cnpj>/', views.deletar_empresa, name='deletar_empresa'),
     path('api/empresas-dctfweb/', empresas_dctfweb, name='empresas_dctfweb'),
-    path('api/dctfweb/', dctfweb_emitir_guias),  # adiciona o endpoint POST
+    path('api/dctfweb/', dctfweb_emitir_guias),  
     path('api/dctfweb/recibos/', dctfweb_emitir_recibos),
     path('api/dctfweb/declaracoes/', dctfweb_emitir_declaracoes),
     path('api/dctfweb/xmls/', dctfweb_emitir_xmls),
@@ -42,9 +45,12 @@ urlpatterns = [
     path('api/processar-pdfs/',processar_pdfs, name='processar_pdfs'),
     path('api/atualizar-status-postado/', views.atualizar_status_postado, name='atualizar_status_postado'),
     path('api/cadastrar-empresa/',cadastrar_empresa, name='cadastrar_empresa'),
-    # ... outras rotas existentes ...
     path('api/empresas-das/', views.empresas_das, name='empresas_das'),
     path('api/enviar-email-nf/', views.enviar_email_nf, name='enviar_email_nf'),
+    path('api/pgdas/recibos/', pgdas_emitir_recibos, name='pgdas_emitir_recibos'),
+    path('api/das/gerar/', das_gerar, name='das_gerar'),
+    path('api/empresas-contabil/', empresas_contabil, name='empresas_contabil'),    
+
 ]
 # 
 

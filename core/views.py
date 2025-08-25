@@ -1813,22 +1813,26 @@ def enviar_email_dividas(request):
             return JsonResponse({'success': False, 'error': 'Destinatário é obrigatório'}, status=400)
         
         # Configurações diretas de e-mail
-        remetente = 'thiago.souza@gerencialconsultoria.com.br'
-        senhaemail = 'updzyurhfcphtmpe'
-        import base64
+        remetente = 'thiago.souza@comecehub.com.br'
+        senhaemail1 = 'vmmleaqvufugcuve'
 
-        # Faça isso uma vez para gerar o código Base64 da imagem
-        with open(r'C:\Users\elean\app_comece\frontend\src\assets\logoemail.png', 'rb') as f:
-            img_data = f.read()
-            base64_encoded = base64.b64encode(img_data).decode('utf-8')
-            print(f"data:image/png;base64,{base64_encoded}")
+        import base64
+        import base64
+        from pathlib import Path
+
+        # Caminho para o logo
+        logo_path = Path("frontend/src/assets/logoemail.png")
+
+        # Converter para Base64
+        with open(logo_path, "rb") as img_file:
+            base64_encoded = base64.b64encode(img_file.read()).decode("utf-8")       
 
         try:
             # Configuração do servidor SMTP
             server = smtplib.SMTP('smtp.gmail.com', 587)
             server.ehlo()
             server.starttls()
-            server.login(remetente, senhaemail)
+            server.login(remetente, senhaemail1)
             
             # Criar a mensagem
             msg = MIMEMultipart('related')
@@ -2392,8 +2396,393 @@ def empresas_das(request):
         return JsonResponse({'erro': str(e)}, status=500)
     
 
+
+    import base64
+import json
+import os
+import tempfile
+import zipfile
+import pycurl
+from io import BytesIO
+from requests_pkcs12 import post
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from sqlalchemy import create_engine
+from decouple import config
+
+@csrf_exempt
+def pgdas_emitir_recibos(request):
+    if request.method != 'POST':
+        return JsonResponse({'mensagem': 'Método não permitido'}, status=405)
+
+    try:
+        body = json.loads(request.body)
+        cnpjs = body.get('cnpjs', [])
+        competencia = body.get('competencia', '')
+
+        if not cnpjs or not competencia:
+            return JsonResponse({'mensagem': 'Informe CNPJs e competência'}, status=400)
+
+        try:
+            mes, ano = competencia.split('/')
+        except ValueError:
+            return JsonResponse({'mensagem': 'Competência inválida. Use o formato MM/AAAA'}, status=400)
+
+        def converter_base64(credenciais):
+            return base64.b64encode(credenciais.encode("utf8")).decode("utf8")
+
+        # Configurações de autenticação SERPRO
+        consumer_key = "QQzNZnYfhaMRRxJELAtHEd6CNXwa"
+        consumer_secret = "8DfDDQYme4MfWpKYy1E4EgmSzkMa"
+        senha = 'Angelo2025'  # Substitua pela sua senha real
+
+        headers_auth = {
+            "Authorization": "Basic " + converter_base64(f"{consumer_key}:{consumer_secret}"),
+            "role-type": "TERCEIROS",
+            "content-type": "application/x-www-form-urlencoded"
+        }
+        body_auth = {'grant_type': 'client_credentials'}
+
+        # Caminho do certificado (ajuste conforme necessário)
+        caminho_arquivo = 'C:/Users/elean/Desktop/bancodedados/integracontador/certificadonovo.pfx'
+
+        try:
+            response = post(
+                "https://autenticacao.sapi.serpro.gov.br/authenticate",
+                data=body_auth,
+                headers=headers_auth,
+                verify=True,
+                pkcs12_filename=caminho_arquivo,
+                pkcs12_password=senha
+            )
+        except Exception as e:
+            return JsonResponse({'mensagem': f'Erro de autenticação: {str(e)}'}, status=500)
+
+        if response.status_code != 200:
+            return JsonResponse({'mensagem': 'Falha na autenticação com a SERPRO'}, status=500)
+
+        tokens = json.loads(response.content.decode())
+        token = tokens['access_token']
+        jwt_token = tokens['jwt_token']
+
+        # Conectar ao banco de dados
+        engine = create_engine(config('DATABASE_URL'))
+
+        # Buscar empresas no banco de dados
+        cnpjs_str = ",".join(f"'{cnpj}'" for cnpj in cnpjs)
+        query = f"""
+            SELECT cnpj, razaosocial 
+            FROM empresas 
+            WHERE cnpj IN ({cnpjs_str})
+        """
+        df = pd.read_sql(query, con=engine)
+        empresas = df.to_dict(orient='records')
+
+        # Criar diretório temporário para os recibos
+        with tempfile.TemporaryDirectory() as temp_dir:
+            zip_path = os.path.join(temp_dir, 'pgdas_recibos.zip')
+            
+            with zipfile.ZipFile(zip_path, 'w') as zipf:
+                for emp in empresas:
+                    cnpj = emp['cnpj']
+                    razao = emp['razaosocial'].replace(' ', '_').replace('/', '_')
+
+                    # Preparar dados do pedido
+                    dados_pedido = {
+                        "contratante": {
+                            "numero": "90878448000103",  # CNPJ da empresa contratante
+                            "tipo": 2
+                        },
+                        "autorPedidoDados": {
+                            "numero": "90878448000103",
+                            "tipo": 2
+                        },
+                        "contribuinte": {
+                            "numero": cnpj,
+                            "tipo": 2
+                        },
+                        "pedidoDados": {
+                            "idSistema": "PGDASD",
+                            "idServico": "CONSULTIMADECREC14",
+                            "versaoSistema": "1.0",
+                            "dados": json.dumps({
+                                "periodoApuracao": f"{ano}{mes}"
+                            })
+                        }
+                    }
+
+                    # Preparar headers para a requisição
+                    headers = [
+                        f'jwt_token:{jwt_token}',
+                        f'Authorization: Bearer {token}',
+                        'Content-Type: application/json',
+                        'Accept: text/plain'
+                    ]
+
+                    # Fazer requisição para a API
+                    buffer = BytesIO()
+                    c = pycurl.Curl()
+                    c.setopt(c.URL, 'https://gateway.apiserpro.serpro.gov.br/integra-contador/v1/Consultar')
+                    c.setopt(c.POSTFIELDS, json.dumps(dados_pedido))
+                    c.setopt(c.HTTPHEADER, headers)
+                    c.setopt(c.WRITEDATA, buffer)
+                    c.perform()
+                    status_code = c.getinfo(c.RESPONSE_CODE)
+                    c.close()
+
+                    # Processar resposta
+                    response_data = buffer.getvalue()
+                    
+                    try:
+                        resultado_emitir = json.loads(response_data.decode("utf-8"))
+                        dados_emitir = json.loads(resultado_emitir.get('dados', '{}'))
+                        pdf_base64 = dados_emitir.get('recibo', {}).get('pdf')
+                    except (json.JSONDecodeError, KeyError) as e:
+                        print(f"Erro ao processar recibo para {razao}: {str(e)}")
+                        continue
+
+                    if not pdf_base64:
+                        print(f"Nenhum PDF encontrado para {razao}")
+                        continue
+
+                    # Salvar PDF
+                    pdf_bin = base64.b64decode(pdf_base64)
+                    nome_arquivo = f"recibo_{razao}_{cnpj}.pdf"
+                    caminho_pdf = os.path.join(temp_dir, nome_arquivo)
+
+                    with open(caminho_pdf, 'wb') as f:
+                        f.write(pdf_bin)
+
+                    # Adicionar ao ZIP
+                    zipf.write(caminho_pdf, arcname=nome_arquivo)
+
+            # Enviar ZIP como resposta
+            with open(zip_path, 'rb') as f:
+                response = HttpResponse(f.read(), content_type='application/zip')
+                response['Content-Disposition'] = 'attachment; filename="pgdas_recibos.zip"'
+                return response
+
+    except Exception as e:
+        return JsonResponse({
+            'mensagem': f'Erro ao gerar recibos PGDAS: {str(e)}',
+            'detalhes': str(e)
+        }, status=500)
+
     #ENVIAR EMAIL DP
 
+
+
+
+    # GERAR GUIA DAS
+import base64
+import json
+import os
+import tempfile
+import zipfile
+import pycurl
+from io import BytesIO
+from requests_pkcs12 import post
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from sqlalchemy import create_engine
+from decouple import config
+import pandas as pd
+
+@csrf_exempt
+def das_gerar(request):
+    if request.method != 'POST':
+        return JsonResponse({'mensagem': 'Método não permitido'}, status=405)
+
+    try:
+        body = json.loads(request.body)
+        cnpjs = body.get('cnpjs', [])
+        competencia = body.get('competencia', '')
+
+        if not cnpjs or not competencia:
+            return JsonResponse({'mensagem': 'Informe CNPJs e competência'}, status=400)
+
+        try:
+            mes, ano = competencia.split('/')
+        except ValueError:
+            return JsonResponse({'mensagem': 'Competência inválida. Use o formato MM/AAAA'}, status=400)
+
+        def converter_base64(credenciais):
+            return base64.b64encode(credenciais.encode("utf8")).decode("utf8")
+
+        # Configurações de autenticação SERPRO
+        url = "https://autenticacao.sapi.serpro.gov.br/authenticate"
+        caminho_arquivo = 'C:/Users/elean/Desktop/bancodedados/integracontador/certificadonovo.pfx'
+        senha = 'Angelo2025'
+        consumer_key = "QQzNZnYfhaMRRxJELAtHEd6CNXwa"
+        consumer_secret = "8DfDDQYme4MfWpKYy1E4EgmSzkMa"
+
+        headers_auth = {
+            "Authorization": "Basic " + converter_base64(f"{consumer_key}:{consumer_secret}"),
+            "role-type": "TERCEIROS",
+            "content-type": "application/x-www-form-urlencoded"
+        }
+        body_auth = {'grant_type': 'client_credentials'}
+
+        try:
+            response = post(
+                url,
+                data=body_auth,
+                headers=headers_auth,
+                verify=True,
+                pkcs12_filename=caminho_arquivo,
+                pkcs12_password=senha
+            )
+        except Exception as e:
+            return JsonResponse({'mensagem': f'Erro de autenticação: {str(e)}'}, status=500)
+
+        if response.status_code != 200:
+            return JsonResponse({'mensagem': 'Falha na autenticação com a SERPRO'}, status=500)
+
+        tokens = json.loads(response.content.decode())
+        token = tokens['access_token']
+        jwt_token = tokens['jwt_token']
+
+        # Conectar ao banco de dados
+        engine = create_engine(config('DATABASE_URL'))
+
+        # Buscar empresas no banco de dados
+        cnpjs_str = ",".join(f"'{cnpj}'" for cnpj in cnpjs)
+        query = f"""
+            SELECT cnpj, razaosocial 
+            FROM empresas 
+            WHERE cnpj IN ({cnpjs_str})
+        """
+        df = pd.read_sql(query, con=engine)
+        empresas = df.to_dict(orient='records')
+
+        # Criar diretório temporário para os DAS
+        with tempfile.TemporaryDirectory() as temp_dir:
+            zip_path = os.path.join(temp_dir, 'das_gerados.zip')
+            
+            # Lista para rastrear empresas sem declaração
+            empresas_sem_declaracao = []
+            
+            with zipfile.ZipFile(zip_path, 'w') as zipf:
+                for emp in empresas:
+                    cnpj = emp['cnpj']
+                    razao = emp['razaosocial'].replace(' ', '_').replace('/', '_')
+
+                    # Preparar dados do pedido
+                    dados_pedido = {
+                        "contratante": {
+                            "numero": "90878448000103",  # CNPJ da empresa contratante
+                            "tipo": 2
+                        },
+                        "autorPedidoDados": {
+                            "numero": "90878448000103",
+                            "tipo": 2
+                        },
+                        "contribuinte": {
+                            "numero": cnpj,
+                            "tipo": 2
+                        },
+                        "pedidoDados": {
+                            "idSistema": "PGDASD",
+                            "idServico": "GERARDAS12",
+                            "versaoSistema": "1.0",
+                            "dados": json.dumps({
+                                "periodoApuracao": f"{ano}{mes}"
+                            })
+                        }
+                    }
+
+                    # Preparar headers para a requisição
+                    headers = [
+                        f'jwt_token:{jwt_token}',
+                        f'Authorization: Bearer {token}',
+                        'Content-Type: application/json',
+                        'Accept: text/plain'
+                    ]
+
+                    # Fazer requisição para a API
+                    buffer = BytesIO()
+                    c = pycurl.Curl()
+                    c.setopt(c.URL, 'https://gateway.apiserpro.serpro.gov.br/integra-contador/v1/Emitir')
+                    c.setopt(c.POSTFIELDS, json.dumps(dados_pedido))
+                    c.setopt(c.HTTPHEADER, headers)
+                    c.setopt(c.WRITEDATA, buffer)
+                    c.perform()
+                    status_code = c.getinfo(c.RESPONSE_CODE)
+                    c.close()
+
+                    # Processar resposta
+                    response_data = buffer.getvalue()
+                    
+                    try:
+                        resultado_emitir = json.loads(response_data.decode("utf-8"))
+                        dados_emitir = json.loads(resultado_emitir.get('dados', '{}'))
+                        
+                        # Verificar se há dados
+                        if isinstance(dados_emitir, list) and not dados_emitir:
+                            print(f"Nenhuma declaração encontrada para o CNPJ {cnpj} - {razao}")
+                            empresas_sem_declaracao.append({
+                                'cnpj': cnpj,
+                                'razaosocial': razao
+                            })
+                            continue
+
+                        pdf_base64 = dados_emitir.get('recibo', {}).get('pdf')
+                    except (json.JSONDecodeError, KeyError) as e:
+                        print(f"Erro ao processar DAS para {razao}: {str(e)}")
+                        empresas_sem_declaracao.append({
+                            'cnpj': cnpj,
+                            'razaosocial': razao
+                        })
+                        continue
+
+                    if not pdf_base64:
+                        print(f"Nenhum PDF encontrado para {razao}")
+                        empresas_sem_declaracao.append({
+                            'cnpj': cnpj,
+                            'razaosocial': razao
+                        })
+                        continue
+
+                    # Salvar PDF
+                    pdf_bin = base64.b64decode(pdf_base64)
+                    nome_arquivo = f"guia_das_{razao}_{cnpj}.pdf"
+                    caminho_pdf = os.path.join(temp_dir, nome_arquivo)
+
+                    with open(caminho_pdf, 'wb') as f:
+                        f.write(pdf_bin)
+
+                    # Adicionar ao ZIP
+                    zipf.write(caminho_pdf, arcname=nome_arquivo)
+
+            # Verificar se há PDFs gerados ou empresas sem declaração
+            if empresas_sem_declaracao:
+                # Se todas as empresas não tiverem declaração
+                if len(empresas_sem_declaracao) == len(empresas):
+                    return JsonResponse({
+                        'mensagem': 'Nenhuma declaração encontrada',
+                        'empresas_sem_declaracao': empresas_sem_declaracao
+                    }, status=404)
+
+            # Se existirem PDFs gerados, enviar o ZIP
+            if os.path.exists(zip_path) and os.path.getsize(zip_path) > 0:
+                with open(zip_path, 'rb') as f:
+                    response = HttpResponse(f.read(), content_type='application/zip')
+                    response['Content-Disposition'] = 'attachment; filename="das_gerados.zip"'
+                    response['X-Empresas-Sem-Declaracao'] = json.dumps(empresas_sem_declaracao)
+                    return response
+            
+            # Se não houver PDFs, retornar JSON com empresas sem declaração
+            return JsonResponse({
+                'mensagem': 'Nenhuma declaração encontrada',
+                'empresas_sem_declaracao': empresas_sem_declaracao
+            }, status=404)
+
+    except Exception as e:
+        return JsonResponse({
+            'mensagem': f'Erro ao gerar DAS: {str(e)}',
+            'detalhes': str(e)
+        }, status=500)
+    
 # Adicionar no views.py
 import os
 from dotenv import load_dotenv
@@ -2420,8 +2809,8 @@ def enviar_email_nf(request):
             return JsonResponse({'success': False, 'error': 'Corpo do email é obrigatório'}, status=400)
         
         # Configurações diretas de e-mail
-        remetente = 'eleandro.martins@comecehub.com.br'
-        senhaemail = os.getenv("EMAIL_SENHA")
+        remetente = 'francielle.vidal@comecehub.com.br'
+        senhaemail1 = os.getenv("EMAIL_SENHA")
         
         # Base64 da logo (mesmo da função original)
         import base64
@@ -2438,7 +2827,7 @@ def enviar_email_nf(request):
             server = smtplib.SMTP('smtp.gmail.com', 587)
             server.ehlo()
             server.starttls()
-            server.login(remetente, senhaemail)
+            server.login(remetente, senhaemail1)
             
             # Criar a mensagem
             msg = MIMEMultipart('related')
@@ -2486,4 +2875,68 @@ def enviar_email_nf(request):
         return JsonResponse({
             'success': False,
             'error': f'Erro interno: {str(e)}'
+        }, status=500)
+
+
+import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from sqlalchemy import create_engine
+from decouple import config
+import pandas as pd
+import numpy as np
+
+@csrf_exempt
+def empresas_contabil(request):
+    try:
+        # Cria conexão com o banco de dados usando SQLAlchemy
+        engine = create_engine(config('DATABASE_URL'))
+        
+        # Consulta SQL para buscar TODOS os dados da tabela
+        query = """
+        SELECT 
+            numero_dominio,
+            empresa,
+            drive_cliente,
+            dt,
+            regime,
+            operador,
+            Status_contabil,
+            tipo_entrega,
+            controle_financeiro
+        FROM clientes_contabil
+        ORDER BY numero_dominio
+        """
+        
+        # Executar query e converter para dicionário
+        df = pd.read_sql(query, con=engine)
+        # df = df['dt'] = df['dt'].astype.float()
+        # Substituir valores NaN por None
+        df = df.where(pd.notnull(df), None)
+        
+        # Converter para lista de dicionários com tratamento de tipos
+        data = df.apply(lambda row: {
+            'numero_dominio': str(row['numero_dominio']) if row['numero_dominio'] is not None else None,
+            'empresa': row['empresa'],
+            'drive_cliente': row['drive_cliente'],
+            'dt': str(row['dt']) if row['dt'] is not None else None,
+            'regime': row['regime'],
+            'operador': row['operador'],
+            'Status_contabil': row['Status_contabil'],
+            'tipo_entrega': row['tipo_entrega'],
+            'controle_financeiro': row['controle_financeiro']
+        }, axis=1).tolist()
+        
+        return JsonResponse({
+            'empresas': data,
+            'total_registros': len(data)
+        }, safe=False)
+    
+    except Exception as e:
+        # Log de erro
+        print(f"Erro ao buscar empresas contábeis: {str(e)}")
+        
+        return JsonResponse({
+            'erro': 'Não foi possível carregar as empresas',
+            'detalhes': str(e)
         }, status=500)

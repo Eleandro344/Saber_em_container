@@ -1,0 +1,29 @@
+.contabilidade-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 20px 0;
+}
+
+.contabilidade-page .container {
+  max-width: 1600px; /* Aumentado para acomodar mais colunas */
+}
+
+.contabilidade-page .header-icon {
+  color: #2c3e50;
+  font-size: 1.5rem;
+}
+
+.contabilidade-page .table {
+  font-size: 0.8rem;
+}
+
+.contabilidade-page .badge {
+  font-size: 0.7em;
+}
+
+/* Responsividade para tabela mais larga */
+@media (max-width: 1200px) {
+  .contabilidade-page .table-responsive {
+    font-size: 0.7rem;
+  }
+}

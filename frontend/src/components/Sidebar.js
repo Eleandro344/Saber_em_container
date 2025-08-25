@@ -8,19 +8,31 @@ const Sidebar = () => {
   const location = useLocation();
   const token = localStorage.getItem('access');
 
-  let username = 'usuário';
 
-  console.log('TOKEN:', token);
-  if (token) {
-    try {
-      const decoded = jwtDecode(token);
-      console.log('DECODED JWT:', decoded); // 👈 Veja o que aparece no console
-// Por algo como (dependendo do que você vê no console)
-     username = decoded.first_name || decoded.username || decoded.sub || 'usuário';
-    } catch (e) {
-      console.error('Erro ao decodificar token:', e);
+let username = 'usuário';
+
+console.log('TOKEN:', token);
+if (token) {
+  try {
+    const decoded = jwtDecode(token);
+    console.log('DECODED JWT:', decoded);
+
+    username = decoded.first_name || decoded.username || decoded.sub || 'usuário';
+
+    // 👇 Ajuste manual de nomes específicos
+    if (username === 'Amandacarissimi') {
+      username = 'Amanda Carissimi';
+    } else if (username === 'Matheusscheidt') {
+      username = 'Matheus Scheidt';
+          } else if (username === 'Maria') {
+      username = 'Maria Eduarda';
     }
+
+  } catch (e) {
+    console.error('Erro ao decodificar token:', e);
   }
+}
+
 
   return (
     <div className="sidebar">
@@ -59,6 +71,13 @@ const Sidebar = () => {
         >
         <i className="fa-solid fa-dollar-sign me-2 fa-2x"></i>
           <span className="sidebar-info">Pendecia Fiscal</span>
+        </Link>   
+        <Link
+          to="/Contabilidade"
+          className={`nav-link nav-link-beat ${location.pathname === '/Contabilidade' ? 'active' : ''}`}
+        >
+        <i className="fa-solid fa-dollar-sign me-2 fa-2x"></i>
+          <span className="sidebar-info">Contabil</span>
         </Link>   
              <Link
           to="/das"

@@ -199,7 +199,12 @@ const Enviaremaildp = () => {
           </div>
           
           <p style="font-size: 16px; color: #34495e;">
-            Não esqueça de enviar a nota, hein? É só mandar por este formulário.
+            Não esqueça de enviar a nota, hein? É só mandar por este 
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSfAZlhZySK6hVlhIPcgw2po5I8AA9GfOXYoixt5nXcxWUEbBQ/formrestricted" 
+              style="color: #2980b9; text-decoration: underline;" 
+              target="_blank">
+              formulário
+            </a>.
           </p>
           
           <p style="font-size: 16px; color: #34495e;">

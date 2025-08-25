@@ -19,10 +19,11 @@ import Dctfweb from './pages/Dctfweb'; // ✅ correto
 import Dividas from './pages/Dividas';
 import Das from './pages/Das';
 import Enviaremaildp from './pages/Enviaremaildp';
+import Contabilidade from './pages/Contabilidade';
 
 const LayoutWrapper = ({ children }) => {
   const location = useLocation();
-  const hideHeaderRoutes = ['/login', '/kanban', '/tarefas', '/IntegraContador','/Dctfweb','/Dividas','/das','/Enviaremaildp'];
+  const hideHeaderRoutes = ['/login', '/kanban', '/tarefas', '/IntegraContador','/Dctfweb','/Dividas','/das','/Enviaremaildp','/Contabilidade'];
   const isHeaderHidden = hideHeaderRoutes.includes(location.pathname);
 
   return (
@@ -95,7 +96,7 @@ function App() {
             <Route path="/Dividas" element={<Dividas />} />
             <Route path="/Das" element={<Das />} />
             <Route path="/Enviaremaildp" element={<Enviaremaildp />} />
-
+            <Route path="/Contabilidade" element={<Contabilidade />} />
           </Route>
         </Routes>
       </LayoutWrapper>
