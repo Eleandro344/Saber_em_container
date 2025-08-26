@@ -128,8 +128,8 @@ if (token) {
           title="Lottie Animation"
           key={animacaoAtual} // Force re-render quando mudar a animação
           style={{
-            width: '400px',
-            height: '500px',
+            width: '300px',
+            height: '300px',
             border: 'none',
             marginTop: '100px',
             marginLeft: '-100px',

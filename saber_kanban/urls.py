@@ -49,7 +49,8 @@ urlpatterns = [
     path('api/enviar-email-nf/', views.enviar_email_nf, name='enviar_email_nf'),
     path('api/pgdas/recibos/', pgdas_emitir_recibos, name='pgdas_emitir_recibos'),
     path('api/das/gerar/', das_gerar, name='das_gerar'),
-    path('api/empresas-contabil/', empresas_contabil, name='empresas_contabil'),    
+    path('api/empresas-contabil/', empresas_contabil, name='empresas_contabil'),   
+    path('api/detalhes-empresa/<str:numero_dominio>/', views.detalhes_empresa, name='detalhes_empresa'),
 
 ]
 # 

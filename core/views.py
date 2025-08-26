@@ -2940,3 +2940,39 @@ def empresas_contabil(request):
             'erro': 'Não foi possível carregar as empresas',
             'detalhes': str(e)
         }, status=500)
+    
+
+    # VER MAIS DETALHES DA EMPRESA
+@csrf_exempt
+def detalhes_empresa(request, numero_dominio):
+    try:
+        engine = create_engine(config('DATABASE_URL'))
+
+        # Consulta todas as colunas da tabela para um único registro
+        query = f"""
+        SELECT *
+        FROM clientes_contabil
+        WHERE numero_dominio = '{numero_dominio}'
+        LIMIT 1
+        """
+
+        df = pd.read_sql(query, con=engine)
+
+        if df.empty:
+            return JsonResponse({'erro': 'Empresa não encontrada'}, status=404)
+
+        # Substituir NaN por None
+        df = df.where(pd.notnull(df), None)
+
+        # Converter para dicionário (apenas 1 linha)
+        data = df.iloc[0].to_dict()
+
+        return JsonResponse({'empresa': data})
+
+    except Exception as e:
+        print(f"Erro ao buscar detalhes da empresa: {str(e)}")
+        return JsonResponse({
+            'erro': 'Não foi possível carregar os detalhes da empresa',
+            'detalhes': str(e)
+        }, status=500)
+    

@@ -55,42 +55,42 @@ if (token) {
           to="/IntegraContador"
           className={`nav-link nav-link-beat ${location.pathname === '/IntegraContador' ? 'active' : ''}`}
         >
-          <i className="fa-solid fa-folder-open me-2 fa-lg"></i>
+      <i className="fa-solid fa-folder-open me-2" style={{ fontSize: "1.3rem" }}></i>
           <span className="sidebar-info">Relatórios Fiscais</span>
         </Link>
       <Link
           to="/Dctfweb"
           className={`nav-link nav-link-beat ${location.pathname === '/Dctfweb' ? 'active' : ''}`}
         >
-        <i className="fa-solid fa-file-invoice me-2 fa-2x"></i>
+        <i className="fa-solid fa-file-invoice me-2 fa-lg"style={{ fontSize: "1.5rem" }}></i>
           <span className="sidebar-info">DCTFWEB</span>
         </Link>       
              <Link
           to="/Dividas"
           className={`nav-link nav-link-beat ${location.pathname === '/Dividas' ? 'active' : ''}`}
         >
-        <i className="fa-solid fa-dollar-sign me-2 fa-2x"></i>
+        <i className="fa-solid fa-dollar-sign me-2 fa-lg"style={{ fontSize: "1.8rem" }}></i>
           <span className="sidebar-info">Pendecia Fiscal</span>
         </Link>   
         <Link
           to="/Contabilidade"
           className={`nav-link nav-link-beat ${location.pathname === '/Contabilidade' ? 'active' : ''}`}
         >
-        <i className="fa-solid fa-dollar-sign me-2 fa-2x"></i>
-          <span className="sidebar-info">Contabil</span>
+        <i className="fa-solid fa-money-bill-transfer me-2 fa-lg"style={{ fontSize: "1.4rem" }}></i>
+          <span className="sidebar-info"> Contábil</span>  
         </Link>   
              <Link
           to="/das"
           className={`nav-link nav-link-beat ${location.pathname === '/Das' ? 'active' : ''}`}
         >
-        <i className="fa-solid fa-money-bill-trend-up me-2 fa-2x"></i>
+        <i className="fa-solid fa-money-bill-trend-up me-2 fa-lg"style={{ fontSize: "1.4rem" }}></i>
           <span className="sidebar-info">PGDAS</span>
         </Link>  
              <Link
           to="/Enviaremaildp"
           className={`nav-link nav-link-beat ${location.pathname === '/Enviaremaildp' ? 'active' : ''}`}
         >
-        <i className="fa-solid fa-envelope-open-text me-2 fa-2x"></i>
+        <i className="fa-solid fa-envelope-open-text me-2 fa-lg"style={{ fontSize: "1.4rem" }}></i>
           <span className="sidebar-info">  Envio email DP</span>
         </Link>           
       </nav>

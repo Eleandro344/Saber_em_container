@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { jwtDecode } from 'jwt-decode'; // Certifique-se de instalar jwt-decode
+import { jwtDecode } from 'jwt-decode';
 import '../styles/Contabilidade.css';
+
+// ✅ Import do Recharts
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const Contabilidade = () => {
   const [empresas, setEmpresas] = useState([]);
@@ -9,36 +12,26 @@ const Contabilidade = () => {
   const [mensagem, setMensagem] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [operadoresUnicos, setOperadoresUnicos] = useState([]);
-  const [mostrarModalDesempenho, setMostrarModalDesempenho] = useState(false); // Novo estado para modal de desempenho
+  const [mostrarModalDesempenho, setMostrarModalDesempenho] = useState(false);
+  const [detalhesEmpresa, setDetalhesEmpresa] = useState(null);
+  const [mostrarModalDetalhes, setMostrarModalDetalhes] = useState(false);
 
   // Determinar o nome do usuário
   const token = localStorage.getItem('access');
   let username = 'usuário';
 
-  console.log('TOKEN:', token);
   if (token) {
     try {
       const decoded = jwtDecode(token);
-      console.log('DECODED JWT:', decoded);
-
       username = decoded.first_name || decoded.username || decoded.sub || 'usuário';
 
-      // 👇 Ajuste manual de nomes específicos
-      if (username === 'Amandacarissimi') {
-        username = 'Amanda Carissimi';
-      } else if (username === 'Matheusscheidt') {
-        username = 'Matheus Scheidt';
-      } else if (username === 'Maria') {
-        username = 'Maria Eduarda';
-      } else if (username === 'Juliana') {
-        username = 'Juliana Lino';
-      } else if (username === 'Leticia') {
-        username = 'Leticia Mohr';      
-      } else if (username === 'Lucas') {
-        username = 'Lucas Petró de Oliveira';    
-      } else if (username === 'Luisa') {
-        username = 'Luísa Brasil';     
-      }
+      if (username === 'Amandacarissimi') username = 'Amanda Carissimi';
+      else if (username === 'Matheusscheidt') username = 'Matheus Scheidt';
+      else if (username === 'Maria') username = 'Maria Eduarda';
+      else if (username === 'Juliana') username = 'Juliana Lino';
+      else if (username === 'Leticia') username = 'Leticia Mohr';
+      else if (username === 'Lucas') username = 'Lucas Petró de Oliveira';
+      else if (username === 'Luisa') username = 'Luísa Brasil';
     } catch (e) {
       console.error('Erro ao decodificar token:', e);
     }
@@ -50,13 +43,13 @@ const Contabilidade = () => {
     drive_cliente: '',
     dt: '',
     regime: '',
-    operador: username === 'usuário' ? '' : username, // Aplicar filtro automático
+    operador: username === 'usuário' ? '' : username,
     Status_contabil: '',
     tipo_entrega: '',
     controle_financeiro: ''
   });
 
-  // Função para carregar empresas
+  // Carregar empresas
   const carregarEmpresas = useCallback(() => {
     setCarregando(true);
     setMensagem('');
@@ -65,30 +58,21 @@ const Contabilidade = () => {
 
     axios
       .get(`${process.env.REACT_APP_API_BASE}/api/empresas-contabil/`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
+        headers: { Authorization: `Bearer ${accessToken}` }
       })
       .then((res) => {
-        console.log('Resposta completa:', res.data);
         const empresasCarregadas = res.data.empresas || [];
-        
-        // Atualizar lista de operadores
         const operadoresUnicos = [...new Set(empresasCarregadas.map(emp => emp.operador).filter(Boolean))].sort();
         setOperadoresUnicos(operadoresUnicos);
-
         setEmpresas(empresasCarregadas);
         setCarregando(false);
       })
       .catch((error) => {
-        console.error('Erro ao carregar empresas:', error);
-
         const errorMsg =
           error.response?.data?.erro ||
           error.response?.data?.mensagem ||
           error.message ||
           'Erro desconhecido ao carregar empresas';
-
         setMensagem(`Erro: ${errorMsg}`);
         setCarregando(false);
       });
@@ -114,38 +98,53 @@ const Contabilidade = () => {
     }
   };
 
-  // ✅ Filtro corrigido
+  // Filtro
   const empresasFiltradas = empresas.filter((emp) => {
     return Object.entries(filtros).every(([campo, valorFiltro]) => {
-      // Se não há valor de filtro, passa
       if (!valorFiltro) return true;
-
-      // Converter para string e lowercase para comparação
       const valorEmpresa = emp[campo] ? emp[campo].toString().toLowerCase() : '';
-      const valorFiltroLower = valorFiltro.toLowerCase();
-
-      // Verificar se o valor do filtro está contido no valor da empresa
-      return valorEmpresa.includes(valorFiltroLower);
+      return valorEmpresa.includes(valorFiltro.toLowerCase());
     });
   });
 
-  // ✅ Função para copiar link
+  // ✅ Dados para o gráfico (agrupa por Status_contabil)
+  const desempenhoOperador = React.useMemo(() => {
+    if (!filtros.operador) return [];
+
+    const dados = {};
+    empresasFiltradas
+      .filter(emp => emp.operador === filtros.operador)
+      .forEach(emp => {
+        const status = emp.Status_contabil || "Não definido";
+        dados[status] = (dados[status] || 0) + 1;
+      });
+
+    return Object.entries(dados).map(([status, total]) => ({
+      name: status,
+      value: total
+    }));
+  }, [empresasFiltradas, filtros.operador]);
+
+  // Copiar link
   const copiarLink = (link) => {
-    if (!link) {
-      alert('Nenhum link disponível');
-      return;
-    }
+    if (!link) return alert('Nenhum link disponível');
     navigator.clipboard.writeText(link);
-    alert('Link copiado para a área de transferência!');
+    alert('Link copiado!');
   };
 
-  // Nova função para detalhes da empresa
   const verDetalhesEmpresa = (empresa) => {
-    console.log('Detalhes da empresa:', empresa);
-    // Futuramente aqui será implementado o modal ou página de detalhes
+    const accessToken = localStorage.getItem('access');
+    axios
+      .get(`${process.env.REACT_APP_API_BASE}/api/detalhes-empresa/${empresa.numero_dominio}/`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      })
+      .then((res) => {
+        setDetalhesEmpresa(res.data.empresa);
+        setMostrarModalDetalhes(true);
+      })
+      .catch(() => alert('Erro ao carregar detalhes da empresa'));
   };
 
-  // Nova função para abrir o modal de desempenho
   const abrirModalDesempenho = () => {
     setMostrarModalDesempenho(true);
   };
@@ -153,6 +152,7 @@ const Contabilidade = () => {
   return (
     <div className="contabilidade-page">
       <div className="container mt-5 shadow p-4 rounded bg-white">
+        {/* Cabeçalho */}
         <div className="header-wrapper d-flex justify-content-between align-items-center mb-3">
           <div className="d-flex align-items-center">
             <i className="fas fa-file-invoice header-icon me-2"></i>
@@ -161,61 +161,38 @@ const Contabilidade = () => {
         </div>
 
         {mensagem && (
-          <div
-            className={`alert ${
-              mensagem.includes('Erro') ? 'alert-danger' : 'alert-success'
-            }`}
-          >
+          <div className={`alert ${mensagem.includes('Erro') ? 'alert-danger' : 'alert-success'}`}>
             {mensagem}
           </div>
         )}
 
-        {/* Novo filtro de operadores */}
-        {/* Dentro do div com classe d-flex gap-2 mb-3 */}
+        {/* Filtros e Botão de Desempenho */}
         <div className="d-flex justify-content-between align-items-center mb-3">
-          {/* Filtro de operadores (mantido como estava) */}
-          <div className="d-flex gap-2">
-            <div>
-              <label className="form-label fw-bold">Operador</label>
-              <select
-                className="form-select"
-                value={filtros.operador}
-                onChange={(e) => 
-                  setFiltros(prev => ({ 
-                    ...prev, 
-                    operador: e.target.value 
-                  }))
-                }
-              >
-                <option value="">Todos Operadores</option>
-                {operadoresUnicos.map((operador) => (
-                  <option key={operador} value={operador}>
-                    {operador}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Novo botão de Desempenho */}
           <div>
-            <button 
-              className="btn btn-primary"
-              onClick={abrirModalDesempenho}
+            <label className="form-label fw-bold">Operador</label>
+            <select
+              className="form-select"
+              value={filtros.operador}
+              onChange={(e) => setFiltros(prev => ({ ...prev, operador: e.target.value }))}
             >
-              <i className="fas fa-chart-line me-2"></i>
-              Ver Desempenho
-            </button>
+              <option value="">Todos Operadores</option>
+              {operadoresUnicos.map((operador) => (
+                <option key={operador} value={operador}>
+                  {operador}
+                </option>
+              ))}
+            </select>
           </div>
+          <button className="btn btn-primary" onClick={abrirModalDesempenho}>
+            <i className="fas fa-chart-line me-2"></i> Ver Desempenho
+          </button>
         </div>
 
-
+        {/* Tabela */}
         <div className="table-responsive">
           {carregando ? (
             <div className="text-center mt-4">
-              <div className="spinner-border" role="status">
-                <span className="visually-hidden">Carregando...</span>
-              </div>
+              <div className="spinner-border" role="status"></div>
               <p>Carregando empresas...</p>
             </div>
           ) : (
@@ -365,7 +342,6 @@ const Contabilidade = () => {
                         }
                       />
                     </th>
-                    {/* Nova coluna de Detalhes */}
                     <th>Detalhes</th>
                   </tr>
                 </thead>
@@ -431,10 +407,10 @@ const Contabilidade = () => {
                       </td>
                       <td>{empresa.tipo_entrega || '-'}</td>
                       <td>{empresa.controle_financeiro || '-'}</td>
-                      {/* Nova coluna de Detalhes */}
                       <td>
                         <button 
                           className="btn btn-sm btn-info"
+                          
                           onClick={() => verDetalhesEmpresa(empresa)}
                         >
                           Ver Mais
@@ -461,39 +437,134 @@ const Contabilidade = () => {
           )}
         </div>
       </div>
-
-      {/* Modal de Desempenho */}
-      {mostrarModalDesempenho && (
-        <div className="modal" tabIndex="-1" style={{display: 'block', backgroundColor: 'rgba(0,0,0,0.5)'}}>
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Desempenho</h5>
-                <button 
-                  type="button" 
-                  className="btn-close" 
-                  onClick={() => setMostrarModalDesempenho(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                {/* Conteúdo do desempenho */}
-                <p>Relatório de desempenho será implementado</p>
-              </div>
-              <div className="modal-footer">
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
-                  onClick={() => setMostrarModalDesempenho(false)}
-                >
-                  Fechar
-                </button>
-              </div>
-            </div>
-          </div>
+      {/* Modal de Detalhes */}
+{mostrarModalDetalhes && detalhesEmpresa && (
+  <div className="modal" tabIndex="-1" style={{display: 'block', backgroundColor: 'rgba(0,0,0,0.5)'}}>
+    <div className="modal-dialog modal-lg">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">Detalhes da Empresa</h5>
+          <button 
+            type="button" 
+            className="btn-close" 
+            onClick={() => setMostrarModalDetalhes(false)}
+          ></button>
         </div>
-      )}
+        <div className="modal-body">
+          <table className="table table-striped">
+            <tbody>
+              {Object.entries(detalhesEmpresa).map(([coluna, valor]) => (
+                <tr key={coluna}>
+                  <th>{coluna}</th>
+                  <td>{valor || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="modal-footer">
+          <button 
+            type="button" 
+            className="btn btn-secondary" 
+            onClick={() => setMostrarModalDetalhes(false)}
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+{mostrarModalDesempenho && (
+  <div
+    className="modal"
+    tabIndex="-1"
+    style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
+  >
+    <div className="modal-dialog modal-lg">
+      <div className="modal-content shadow-lg rounded">
+        <div className="modal-header bg-primary text-white">
+          <h5 className="modal-title">Desempenho do Operador</h5>
+          <button
+            type="button"
+            className="btn-close btn-close-white"
+            onClick={() => setMostrarModalDesempenho(false)}
+          ></button>
+        </div>
+        <div className="modal-body d-flex justify-content-center align-items-center flex-column">
+          {desempenhoOperador.length > 0 ? (
+            <ResponsiveContainer width="100%" height={350}>
+              <PieChart>
+                <Pie
+                  data={desempenhoOperador}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={120}
+                  innerRadius={70}
+                  paddingAngle={4}
+                  cornerRadius={10}
+                  isAnimationActive={true}
+                  label={({ name, percent }) =>
+                    `${name}: ${(percent * 100).toFixed(0)}%`
+                  }
+                  stroke="#fff"
+                >
+                  {desempenhoOperador.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={
+                        entry.name === "Concluído" || entry.name === "Em Dia"
+                          ? "#28a745"
+                          : entry.name === "Pendente" || entry.name === "Aguardando"
+                          ? "#ffc107"
+                          : entry.name === "Atrasado"
+                          ? "#dc3545"
+                          : "#6c757d"
+                      }
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#343a40",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                  }}
+                  formatter={(value, name) => [`${value}`, name]}
+                />
+                <Legend
+                  verticalAlign="bottom"
+                  iconSize={14}
+                  wrapperStyle={{
+                    marginTop: "20px",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-muted mt-4">Nenhum dado disponível para este operador.</p>
+          )}
+        </div>
+        <div className="modal-footer">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setMostrarModalDesempenho(false)}
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
-};
-
-export default Contabilidade;
+}
+export default Contabilidade
