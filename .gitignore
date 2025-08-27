@@ -1,20 +1,74 @@
-# Python
-venv/
-__pycache__/
+# =================
+# Python / Django
+# =================
 *.pyc
 *.pyo
 *.pyd
-*.log
+__pycache__/
+*.so
+*.egg-info/
+*.egg
+db.sqlite3
 *.sqlite3
-.env
-venv
+*.log
 
-# Node
+# Virtual env
+venv/
+.env
+.env.*
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Django stuff
+media/
+staticfiles/
+static/
+*.pot
+
+# Secret configs
+secret.py
+config_local.py
+
+# =================
+# Node / React
+# =================
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# Build
+.pnp/
+.pnp.js
+.cache/
 dist/
 build/
+
+# React Testing
+coverage/
+*.lcov
+
+# =================
+# VSCode / IDEs
+# =================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# =================
+# Docker
+# =================
+*.pid
+*.seed
+*.pid.lock
+docker-compose.override.yml
+
+# =================
+# System
+# =================
+.DS_Store
+Thumbs.db
+desktop.ini
