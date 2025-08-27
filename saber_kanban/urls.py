@@ -51,7 +51,7 @@ urlpatterns = [
     path('api/das/gerar/', das_gerar, name='das_gerar'),
     path('api/empresas-contabil/', empresas_contabil, name='empresas_contabil'),   
     path('api/detalhes-empresa/<str:numero_dominio>/', views.detalhes_empresa, name='detalhes_empresa'),
-
+    
 ]
 # 
 

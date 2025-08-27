@@ -12,9 +12,34 @@ const Contabilidade = () => {
   const [mensagem, setMensagem] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [operadoresUnicos, setOperadoresUnicos] = useState([]);
-  const [mostrarModalDesempenho, setMostrarModalDesempenho] = useState(false);
   const [detalhesEmpresa, setDetalhesEmpresa] = useState(null);
   const [mostrarModalDetalhes, setMostrarModalDetalhes] = useState(false);
+
+  // Função para formatar a data para competência
+  const formatarCompetencia = (dataString) => {
+    if (!dataString) return '-';
+    
+    try {
+      // Para formato ISO "2024-12-31 00:00:00"
+      if (dataString.includes('-')) {
+        const [dataPart] = dataString.split(' ');
+        const [ano, mes] = dataPart.split('-');
+        return `${mes}/${ano.slice(2)}`;
+      }
+      
+      // Para formato "31/12/2024 00:00"
+      if (dataString.includes('/')) {
+        const [dataPart] = dataString.split(' ');
+        const [dia, mes, ano] = dataPart.split('/');
+        return `${mes}/${ano.slice(2)}`;
+      }
+      
+      return dataString;
+    } catch (e) {
+      console.error("Erro ao formatar data:", e);
+      return dataString;
+    }
+  };
 
   // Determinar o nome do usuário
   const token = localStorage.getItem('access');
@@ -42,6 +67,8 @@ const Contabilidade = () => {
     empresa: '',
     drive_cliente: '',
     dt: '',
+    ultima_entrega: '',
+    proxima_entrega: '',
     regime: '',
     operador: username === 'usuário' ? '' : username,
     Status_contabil: '',
@@ -125,13 +152,12 @@ const Contabilidade = () => {
     }));
   }, [empresasFiltradas, filtros.operador]);
 
-  // Copiar link
-  const copiarLink = (link) => {
-    if (!link) return alert('Nenhum link disponível');
-    navigator.clipboard.writeText(link);
-    alert('Link copiado!');
-  };
 
+/*************  ✨ Windsurf Command ⭐  *************/
+/**
+ * Abre o modal com os detalhes da empresa clicada
+ * @param {Object} empresa - Objeto com os dados da empresa
+/*******  50e06e80-816e-4117-a740-66c6fba59768  *******/
   const verDetalhesEmpresa = (empresa) => {
     const accessToken = localStorage.getItem('access');
     axios
@@ -143,10 +169,6 @@ const Contabilidade = () => {
         setMostrarModalDetalhes(true);
       })
       .catch(() => alert('Erro ao carregar detalhes da empresa'));
-  };
-
-  const abrirModalDesempenho = () => {
-    setMostrarModalDesempenho(true);
   };
 
   return (
@@ -166,27 +188,93 @@ const Contabilidade = () => {
           </div>
         )}
 
-        {/* Filtros e Botão de Desempenho */}
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <div>
-            <label className="form-label fw-bold">Operador</label>
-            <select
-              className="form-select"
-              value={filtros.operador}
-              onChange={(e) => setFiltros(prev => ({ ...prev, operador: e.target.value }))}
-            >
-              <option value="">Todos Operadores</option>
-              {operadoresUnicos.map((operador) => (
-                <option key={operador} value={operador}>
-                  {operador}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button className="btn btn-primary" onClick={abrirModalDesempenho}>
-            <i className="fas fa-chart-line me-2"></i> Ver Desempenho
-          </button>
+        {/* Filtro do Operador */}
+        <div className="mb-3">
+          <label className="form-label fw-bold">Operador</label>
+          <select
+            className="form-select"
+            style={{ maxWidth: '300px' }}
+            value={filtros.operador}
+            onChange={(e) => setFiltros(prev => ({ ...prev, operador: e.target.value }))}
+          >
+            <option value="">Todos Operadores</option>
+            {operadoresUnicos.map((operador) => (
+              <option key={operador} value={operador}>
+                {operador}
+              </option>
+            ))}
+          </select>
         </div>
+
+        {/* ✅ GRÁFICO DE DESEMPENHO SEMPRE VISÍVEL */}
+        {filtros.operador && (
+          <div className="mb-4 p-3 border rounded bg-light">
+            <h5 className="mb-3 text-center">
+              <i className="fas fa-chart-pie me-2"></i>
+              Desempenho do Operador: {filtros.operador}
+            </h5>
+            <div className="d-flex justify-content-center">
+              {desempenhoOperador.length > 0 ? (
+                <ResponsiveContainer width="100%" height={350}>
+                  <PieChart>
+                    <Pie
+                      data={desempenhoOperador}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={120}
+                      innerRadius={70}
+                      paddingAngle={4}
+                      cornerRadius={10}
+                      isAnimationActive={true}
+                      label={({ name, percent }) =>
+                        `${name}: ${(percent * 100).toFixed(0)}%`
+                      }
+                      stroke="#fff"
+                    >
+                      {desempenhoOperador.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={
+                            entry.name === "Concluído" || entry.name === "Em Dia"
+                              ? "#28a745"
+                              : entry.name === "Pendente" || entry.name === "Aguardando"
+                              ? "#ffc107"
+                              : entry.name === "Atrasado"
+                              ? "#dc3545"
+                              : "#6c757d"
+                          }
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#343a40",
+                        border: "none",
+                        borderRadius: "8px",
+                        color: "#fff",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                      }}
+                      formatter={(value, name) => [`${value}`, name]}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      iconSize={14}
+                      wrapperStyle={{
+                        marginTop: "20px",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-muted mt-4">Nenhum dado disponível para este operador.</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Tabela */}
         <div className="table-responsive">
@@ -267,6 +355,30 @@ const Contabilidade = () => {
                         }
                       />
                     </th>
+                    <th>
+                      Ultima Entrega
+                      <input
+                        type="text"
+                        className="form-control form-control-sm mt-1"
+                        placeholder="Filtrar..."
+                        value={filtros.ultima_entrega}
+                        onChange={(e) =>
+                          setFiltros((prev) => ({ ...prev, ultima_entrega: e.target.value }))
+                        }
+                      />
+                    </th>
+                    <th>
+                      Próxima Entrega
+                      <input
+                        type="text"
+                        className="form-control form-control-sm mt-1"
+                        placeholder="Filtrar..."
+                        value={filtros.proxima_entrega}
+                        onChange={(e) =>
+                          setFiltros((prev) => ({ ...prev, proxima_entrega: e.target.value }))
+                        }
+                      />
+                    </th>                    
                     <th>
                       Regime
                       <input
@@ -365,12 +477,6 @@ const Contabilidade = () => {
                         {empresa.drive_cliente ? (
                           <>
                             <button
-                              className="btn btn-sm btn-outline-primary me-1"
-                              onClick={() => copiarLink(empresa.drive_cliente)}
-                            >
-                              Copiar
-                            </button>
-                            <button
                               className="btn btn-sm btn-outline-success"
                               onClick={() =>
                                 window.open(empresa.drive_cliente, '_blank')
@@ -384,6 +490,8 @@ const Contabilidade = () => {
                         )}
                       </td>
                       <td>{empresa.dt || '-'}</td>
+                      <td>{empresa.ultima_entrega ? formatarCompetencia(empresa.ultima_entrega) : '-'}</td>
+                      <td>{empresa.proxima_entrega || '-'}</td>
                       <td>{empresa.regime || '-'}</td>
                       <td>{empresa.operador || '-'}</td>
                       <td>
@@ -410,7 +518,6 @@ const Contabilidade = () => {
                       <td>
                         <button 
                           className="btn btn-sm btn-info"
-                          
                           onClick={() => verDetalhesEmpresa(empresa)}
                         >
                           Ver Mais
@@ -437,134 +544,50 @@ const Contabilidade = () => {
           )}
         </div>
       </div>
+
       {/* Modal de Detalhes */}
-{mostrarModalDetalhes && detalhesEmpresa && (
-  <div className="modal" tabIndex="-1" style={{display: 'block', backgroundColor: 'rgba(0,0,0,0.5)'}}>
-    <div className="modal-dialog modal-lg">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h5 className="modal-title">Detalhes da Empresa</h5>
-          <button 
-            type="button" 
-            className="btn-close" 
-            onClick={() => setMostrarModalDetalhes(false)}
-          ></button>
-        </div>
-        <div className="modal-body">
-          <table className="table table-striped">
-            <tbody>
-              {Object.entries(detalhesEmpresa).map(([coluna, valor]) => (
-                <tr key={coluna}>
-                  <th>{coluna}</th>
-                  <td>{valor || '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="modal-footer">
-          <button 
-            type="button" 
-            className="btn btn-secondary" 
-            onClick={() => setMostrarModalDetalhes(false)}
-          >
-            Fechar
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-{mostrarModalDesempenho && (
-  <div
-    className="modal"
-    tabIndex="-1"
-    style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
-  >
-    <div className="modal-dialog modal-lg">
-      <div className="modal-content shadow-lg rounded">
-        <div className="modal-header bg-primary text-white">
-          <h5 className="modal-title">Desempenho do Operador</h5>
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            onClick={() => setMostrarModalDesempenho(false)}
-          ></button>
-        </div>
-        <div className="modal-body d-flex justify-content-center align-items-center flex-column">
-          {desempenhoOperador.length > 0 ? (
-            <ResponsiveContainer width="100%" height={350}>
-              <PieChart>
-                <Pie
-                  data={desempenhoOperador}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={120}
-                  innerRadius={70}
-                  paddingAngle={4}
-                  cornerRadius={10}
-                  isAnimationActive={true}
-                  label={({ name, percent }) =>
-                    `${name}: ${(percent * 100).toFixed(0)}%`
-                  }
-                  stroke="#fff"
+      {mostrarModalDetalhes && detalhesEmpresa && (
+        <div className="modal" tabIndex="-1" style={{display: 'block', backgroundColor: 'rgba(0,0,0,0.5)'}}>
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Detalhes da Empresa</h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => setMostrarModalDetalhes(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <table className="table table-striped">
+                  <tbody>
+                    {Object.entries(detalhesEmpresa).map(([coluna, valor]) => (
+                      <tr key={coluna}>
+                        <th>{coluna}</th>
+                        <td>
+                          {coluna === 'ultima_entrega' && valor ? formatarCompetencia(valor) : 
+                           (valor || '-')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setMostrarModalDetalhes(false)}
                 >
-                  {desempenhoOperador.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={
-                        entry.name === "Concluído" || entry.name === "Em Dia"
-                          ? "#28a745"
-                          : entry.name === "Pendente" || entry.name === "Aguardando"
-                          ? "#ffc107"
-                          : entry.name === "Atrasado"
-                          ? "#dc3545"
-                          : "#6c757d"
-                      }
-                    />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#343a40",
-                    border: "none",
-                    borderRadius: "8px",
-                    color: "#fff",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-                  }}
-                  formatter={(value, name) => [`${value}`, name]}
-                />
-                <Legend
-                  verticalAlign="bottom"
-                  iconSize={14}
-                  wrapperStyle={{
-                    marginTop: "20px",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-muted mt-4">Nenhum dado disponível para este operador.</p>
-          )}
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="modal-footer">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setMostrarModalDesempenho(false)}
-          >
-            Fechar
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </div>
   );
 }
+
 export default Contabilidade

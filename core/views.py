@@ -2876,8 +2876,15 @@ def enviar_email_nf(request):
             'success': False,
             'error': f'Erro interno: {str(e)}'
         }, status=500)
+    
 
 
+
+
+
+
+
+    # AQUI É AJUSTE DE DATAS
 import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -2885,6 +2892,112 @@ from sqlalchemy import create_engine
 from decouple import config
 import pandas as pd
 import numpy as np
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
+
+# Função auxiliar para transformar a data em formato de competência
+def transform_date_to_competence(date_str):
+    try:
+        if pd.isna(date_str) or date_str is None:
+            return None
+        
+        # Se a data estiver no formato '31/12/2024 00:00'
+        if isinstance(date_str, str) and ' ' in date_str and '/' in date_str:
+            date_part = date_str.split(' ')[0]
+            day, month, year = date_part.split('/')
+            return f"{month}/{year[2:]}"  # Retorna "12/24"
+        
+        # Se a data estiver no formato ISO '2024-12-31 00:00:00'
+        elif isinstance(date_str, str) and ' ' in date_str and '-' in date_str:
+            date_part = date_str.split(' ')[0]
+            year, month, day = date_part.split('-')
+            return f"{month}/{year[2:]}"  # Retorna "12/24"
+        
+        # Se a data for um objeto datetime
+        elif hasattr(date_str, 'month') and hasattr(date_str, 'year'):
+            return f"{date_str.month:02d}/{str(date_str.year)[2:]}"
+        
+        return date_str  # Retorna o valor original se não conseguir converter
+    except Exception:
+        return date_str  # Em caso de erro, retorna o valor original
+
+# Função para calcular a próxima entrega com base no tipo de entrega
+def calcular_proxima_entrega(ultima_entrega_str, tipo_entrega, data_dia=None):
+    try:
+        # Se não tiver última entrega ou tipo de entrega, retorna None
+        if not ultima_entrega_str or not tipo_entrega:
+            return None
+        
+        # Converte a string de data para um objeto datetime
+        if isinstance(ultima_entrega_str, str):
+            # Tenta formato ISO "2024-12-31 00:00:00"
+            if '-' in ultima_entrega_str:
+                data_parts = ultima_entrega_str.split(' ')[0].split('-')
+                if len(data_parts) == 3:
+                    year, month, day = data_parts
+                    ultima_entrega = datetime(int(year), int(month), int(day))
+                else:
+                    return None
+            # Tenta formato "31/12/2024 00:00"
+            elif '/' in ultima_entrega_str:
+                data_parts = ultima_entrega_str.split(' ')[0].split('/')
+                if len(data_parts) == 3:
+                    day, month, year = data_parts
+                    ultima_entrega = datetime(int(year), int(month), int(day))
+                else:
+                    return None
+            else:
+                return None
+        elif isinstance(ultima_entrega_str, datetime):
+            ultima_entrega = ultima_entrega_str
+        else:
+            return None
+        
+        # Determina o dia do mês para a próxima entrega
+        # Se data_dia for fornecido, tente usá-lo como inteiro
+        dia = None
+        if data_dia is not None:
+            try:
+                # Converte para inteiro, lidando com floats
+                if isinstance(data_dia, float):
+                    dia = int(data_dia)
+                elif isinstance(data_dia, str):
+                    dia = int(float(data_dia))
+                else:
+                    dia = int(data_dia)
+                
+                # Verifica se o dia está em um intervalo válido (1-31)
+                if dia < 1 or dia > 31:
+                    dia = ultima_entrega.day
+            except (ValueError, TypeError):
+                # Se falhar, use o dia da última entrega
+                dia = ultima_entrega.day
+        else:
+            # Se data_dia não for fornecido, use o dia da última entrega
+            dia = ultima_entrega.day
+        
+        # Calcula a próxima entrega com base no tipo
+        if tipo_entrega.lower() == 'mensal':
+            proxima_entrega = ultima_entrega + relativedelta(months=1)
+        elif tipo_entrega.lower() == 'quarter':
+            proxima_entrega = ultima_entrega + relativedelta(months=3)
+        elif tipo_entrega.lower() == 'anual':
+            proxima_entrega = ultima_entrega + relativedelta(years=1)
+        else:
+            # Se o tipo não for reconhecido, mantém a mesma data
+            proxima_entrega = ultima_entrega
+        
+        # Ajusta o dia, mantendo o mesmo dia do mês quando possível
+        ultimo_dia_mes = pd.Timestamp(proxima_entrega.year, proxima_entrega.month, 1) + pd.offsets.MonthEnd(1)
+        dia_ajustado = min(dia, ultimo_dia_mes.day)
+        proxima_entrega = proxima_entrega.replace(day=dia_ajustado)
+        
+        # Formata como string DD/MM/YY
+        return f"{proxima_entrega.day:02d}/{proxima_entrega.month:02d}/{str(proxima_entrega.year)[2:]}"
+    
+    except Exception as e:
+        print(f"Erro ao calcular próxima entrega: {str(e)}")
+        return None
 
 @csrf_exempt
 def empresas_contabil(request):
@@ -2899,6 +3012,7 @@ def empresas_contabil(request):
             empresa,
             drive_cliente,
             dt,
+            ultima_entrega,
             regime,
             operador,
             Status_contabil,
@@ -2910,7 +3024,6 @@ def empresas_contabil(request):
         
         # Executar query e converter para dicionário
         df = pd.read_sql(query, con=engine)
-        # df = df['dt'] = df['dt'].astype.float()
         # Substituir valores NaN por None
         df = df.where(pd.notnull(df), None)
         
@@ -2920,6 +3033,8 @@ def empresas_contabil(request):
             'empresa': row['empresa'],
             'drive_cliente': row['drive_cliente'],
             'dt': str(row['dt']) if row['dt'] is not None else None,
+            'ultima_entrega': row['ultima_entrega'],
+            'proxima_entrega': calcular_proxima_entrega(row['ultima_entrega'], row['tipo_entrega'], row['dt']),
             'regime': row['regime'],
             'operador': row['operador'],
             'Status_contabil': row['Status_contabil'],
@@ -2942,7 +3057,7 @@ def empresas_contabil(request):
         }, status=500)
     
 
-    # VER MAIS DETALHES DA EMPRESA
+# VER MAIS DETALHES DA EMPRESA
 @csrf_exempt
 def detalhes_empresa(request, numero_dominio):
     try:
@@ -2966,6 +3081,26 @@ def detalhes_empresa(request, numero_dominio):
 
         # Converter para dicionário (apenas 1 linha)
         data = df.iloc[0].to_dict()
+        
+        # Adicionar campo de próxima entrega
+        data['proxima_entrega'] = calcular_proxima_entrega(
+            data.get('ultima_entrega'), 
+            data.get('tipo_entrega'),
+            data.get('dt')
+        )
+        
+        # Transformar a data de última entrega para o formato de competência
+        if 'ultima_entrega' in data and data['ultima_entrega'] is not None:
+            data['ultima_entrega'] = transform_date_to_competence(data['ultima_entrega'])
+        
+        # Converter outros tipos de dados que possam causar problemas na serialização JSON
+        for key, value in data.items():
+            if isinstance(value, (np.int64, np.float64)):
+                data[key] = float(value)
+            elif isinstance(value, (datetime, np.datetime64)):
+                data[key] = str(value)
+            elif pd.isna(value):
+                data[key] = None
 
         return JsonResponse({'empresa': data})
 
@@ -2975,4 +3110,3 @@ def detalhes_empresa(request, numero_dominio):
             'erro': 'Não foi possível carregar os detalhes da empresa',
             'detalhes': str(e)
         }, status=500)
-    
