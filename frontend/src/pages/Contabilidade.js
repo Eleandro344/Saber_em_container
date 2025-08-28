@@ -16,6 +16,9 @@ const Contabilidade = () => {
   const [carregando, setCarregando] = useState(true);
   const [operadoresUnicos, setOperadoresUnicos] = useState([]);
   const [detalhesEmpresa, setDetalhesEmpresa] = useState(null);
+  const [detalhesEditaveis, setDetalhesEditaveis] = useState(null);
+  const [modoEdicao, setModoEdicao] = useState(false);
+  const [salvandoDetalhes, setSalvandoDetalhes] = useState(false);
   const [mostrarModalDetalhes, setMostrarModalDetalhes] = useState(false);
   const [mostrarModalEntregaParcial, setMostrarModalEntregaParcial] = useState(false);
   const [textoEntregaParcial, setTextoEntregaParcial] = useState('');
@@ -423,9 +426,51 @@ const Contabilidade = () => {
       })
       .then((res) => {
         setDetalhesEmpresa(res.data.empresa);
+        setDetalhesEditaveis(res.data.empresa);
+        setModoEdicao(false);
         setMostrarModalDetalhes(true);
       })
       .catch(() => alert('Erro ao carregar detalhes da empresa'));
+  };
+  
+  // Função para atualizar os detalhes editáveis
+  const handleDetalheChange = (campo, valor) => {
+    setDetalhesEditaveis(prev => ({
+      ...prev,
+      [campo]: valor
+    }));
+  };
+
+  // Função para salvar alterações nos detalhes
+  const salvarDetalhes = () => {
+    setSalvandoDetalhes(true);
+    const accessToken = localStorage.getItem('access');
+
+    axios
+      .post(
+        `${process.env.REACT_APP_API_BASE}/api/atualizar-empresa/${detalhesEmpresa.numero_dominio}/`,
+        detalhesEditaveis,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        }
+      )
+      .then((res) => {
+        setDetalhesEmpresa(res.data.empresa);
+        setDetalhesEditaveis(res.data.empresa);
+        setModoEdicao(false);
+        setSalvandoDetalhes(false);
+        setMensagem('Dados da empresa atualizados com sucesso!');
+        carregarEmpresas(); // Recarregar a lista de empresas para refletir as alterações
+      })
+      .catch((error) => {
+        const errorMsg =
+          error.response?.data?.erro ||
+          error.response?.data?.mensagem ||
+          error.message ||
+          'Erro desconhecido ao atualizar empresa';
+        setMensagem(`Erro: ${errorMsg}`);
+        setSalvandoDetalhes(false);
+      });
   };
 
   return (
@@ -930,42 +975,180 @@ const Contabilidade = () => {
         </div>
       </div>
 
-      {/* Modal de Detalhes */}
+      {/* Modal de Detalhes com Edição */}
       {mostrarModalDetalhes && detalhesEmpresa && (
         <div className="modal" tabIndex="-1" style={{display: 'block', backgroundColor: 'rgba(0,0,0,0.5)'}}>
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Detalhes da Empresa</h5>
+                <h5 className="modal-title">
+                  {modoEdicao ? "Editar Empresa" : "Detalhes da Empresa"}
+                </h5>
                 <button 
                   type="button" 
                   className="btn-close" 
                   onClick={() => setMostrarModalDetalhes(false)}
+                  disabled={salvandoDetalhes}
                 ></button>
               </div>
               <div className="modal-body">
-                <table className="table table-striped">
-                  <tbody>
-                    {Object.entries(detalhesEmpresa).map(([coluna, valor]) => (
-                      <tr key={coluna}>
-                        <th>{coluna}</th>
-                        <td>
-                          {coluna === 'ultima_entrega' && valor ? formatarCompetencia(valor) : 
-                           (valor || '-')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="table-responsive">
+                  <table className="table table-striped">
+                    <tbody>
+                      {Object.entries(detalhesEmpresa).map(([coluna, valor]) => {
+                        // Campos que não podem ser editados
+                        const camposProtegidos = [
+                          'ultima_entrega', 
+                          'proxima_entrega', 
+                          'id', 
+                          'numero_dominio', 
+                          'Status_contabil', 
+                          'dias_atraso'
+                        ];
+                        
+                        const editavel = !camposProtegidos.includes(coluna);
+                        
+                        return (
+                          <tr key={coluna}>
+                            <th>{coluna}</th>
+                            <td>
+                              {modoEdicao && editavel ? (
+                                // Campo editável
+                                coluna === 'operador' ? (
+                                  // Select para operadores
+                                  <select 
+                                    className="form-select form-select-sm"
+                                    value={detalhesEditaveis[coluna] || ''}
+                                    onChange={(e) => handleDetalheChange(coluna, e.target.value)}
+                                  >
+                                    <option value="">Selecione um operador</option>
+                                    {operadoresUnicos.map((op) => (
+                                      <option key={op} value={op}>{op}</option>
+                                    ))}
+                                  </select>
+                                ) : coluna === 'tipo_entrega' ? (
+                                  // Select para tipo de entrega
+                                  <select 
+                                    className="form-select form-select-sm"
+                                    value={detalhesEditaveis[coluna] || ''}
+                                    onChange={(e) => handleDetalheChange(coluna, e.target.value)}
+                                  >
+                                    <option value="">Selecione o tipo</option>
+                                    <option value="Anual">Anual</option>
+                                    <option value="Mensal">Mensal</option>
+                                    <option value="Trimestral">Trimestral</option>
+                                    <option value="Semestral">Semestral</option>
+                                  </select>
+                                ) : coluna === 'regime' ? (
+                                  // Select para regime
+                                  <select 
+                                    className="form-select form-select-sm"
+                                    value={detalhesEditaveis[coluna] || ''}
+                                    onChange={(e) => handleDetalheChange(coluna, e.target.value)}
+                                  >
+                                    <option value="">Selecione o regime</option>
+                                    <option value="LP">Lucro Presumido</option>
+                                    <option value="LR">Lucro Real</option>
+                                    <option value="SN">Simples Nacional</option>
+                                  </select>
+                                ) : coluna === 'controle_financeiro' ? (
+                                  // Select para controle financeiro
+                                  <select 
+                                    className="form-select form-select-sm"
+                                    value={detalhesEditaveis[coluna] || ''}
+                                    onChange={(e) => handleDetalheChange(coluna, e.target.value)}
+                                  >
+                                    <option value="">Selecione</option>
+                                    <option value="Sim">Sim</option>
+                                    <option value="Não">Não</option>
+                                    <option value="Não tem">Não tem</option>
+                                  </select>
+                                ) : coluna === 'dt' ? (
+                                  // Input para dia
+                                  <input 
+                                    type="number" 
+                                    className="form-control form-control-sm"
+                                    value={detalhesEditaveis[coluna] || ''}
+                                    onChange={(e) => handleDetalheChange(coluna, e.target.value)}
+                                    min="1"
+                                    max="31"
+                                  />
+                                ) : (
+                                  // Input para outros campos
+                                  <input 
+                                    type="text" 
+                                    className="form-control form-control-sm"
+                                    value={detalhesEditaveis[coluna] || ''}
+                                    onChange={(e) => handleDetalheChange(coluna, e.target.value)}
+                                  />
+                                )
+                              ) : (
+                                // Visualização (não editável)
+                                coluna === 'ultima_entrega' && valor ? formatarCompetencia(valor) : 
+                                (valor || '-')
+                              )}
+                              
+                              {/* Badge para campos protegidos quando no modo edição */}
+                              {modoEdicao && !editavel && (
+                                <span className="badge bg-secondary ms-2">Não editável</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
               <div className="modal-footer">
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
-                  onClick={() => setMostrarModalDetalhes(false)}
-                >
-                  Fechar
-                </button>
+                {modoEdicao ? (
+                  <>
+                    <button 
+                      type="button" 
+                      className="btn btn-secondary" 
+                      onClick={() => {
+                        setModoEdicao(false);
+                        setDetalhesEditaveis(detalhesEmpresa); // Restaurar valores originais
+                      }}
+                      disabled={salvandoDetalhes}
+                    >
+                      Cancelar
+                    </button>
+                    <button 
+                      type="button" 
+                      className="btn btn-primary"
+                      onClick={salvarDetalhes}
+                      disabled={salvandoDetalhes}
+                    >
+                      {salvandoDetalhes ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Salvando...
+                        </>
+                      ) : (
+                        'Salvar Alterações'
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button 
+                      type="button" 
+                      className="btn btn-primary" 
+                      onClick={() => setModoEdicao(true)}
+                    >
+                      <i className="fas fa-edit me-2"></i>
+                      Editar
+                    </button>
+                    <button 
+                      type="button" 
+                      className="btn btn-secondary" 
+                      onClick={() => setMostrarModalDetalhes(false)}
+                    >
+                      Fechar
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

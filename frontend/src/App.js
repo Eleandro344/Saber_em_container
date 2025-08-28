@@ -23,7 +23,7 @@ import Contabilidade from './pages/Contabilidade';
 import Textolivre from './pages/Textolivre';
 const LayoutWrapper = ({ children }) => {
   const location = useLocation();
-  const hideHeaderRoutes = ['/login', '/kanban', '/tarefas', '/IntegraContador','/Dctfweb','/Dividas','/das','/Enviaremaildp','/contabilidade','/Textolivre'];
+  const hideHeaderRoutes = ['/login', '/kanban', '/tarefas', '/IntegraContador','/Dctfweb','/Dividas','/das','/Enviaremaildp','/contabilidade','/Textolivre','/Contabilidade'];
   const isHeaderHidden = hideHeaderRoutes.includes(location.pathname);
 
   return (

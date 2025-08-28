@@ -3512,3 +3512,66 @@ def salvar_texto_livre_contabil(request):
             'erro': 'Não foi possível salvar o texto',
             'detalhes': str(e)
         }, status=500)    
+
+@csrf_exempt
+def atualizar_empresa(request, numero_dominio):
+    if request.method != 'POST':
+        return JsonResponse({'erro': 'Método não permitido'}, status=405)
+    
+    try:
+        # Decodificar o corpo da requisição
+        body = json.loads(request.body.decode('utf-8'))
+        
+        # Verificar se há dados para atualizar
+        if not body:
+            return JsonResponse({'erro': 'Nenhum dado fornecido para atualização'}, status=400)
+        
+        # Conexão com o banco
+        engine = create_engine(config('DATABASE_URL'))
+        
+        # Campos que não podem ser editados
+        campos_protegidos = ['ultima_entrega', 'proxima_entrega', 'id', 'numero_dominio']
+        
+        # Filtrar apenas campos permitidos para atualização
+        campos_para_atualizar = {k: v for k, v in body.items() if k not in campos_protegidos}
+        
+        if not campos_para_atualizar:
+            return JsonResponse({'erro': 'Nenhum campo editável fornecido'}, status=400)
+        
+        # Construir a query de atualização dinamicamente
+        with engine.connect() as conn:
+            # Construir a string SET da query
+            set_parts = []
+            params = {}
+            
+            for campo, valor in campos_para_atualizar.items():
+                set_parts.append(f"{campo} = :{campo}")
+                params[campo] = valor if valor != '-' else None
+            
+            set_clause = ", ".join(set_parts)
+            params['numero_dominio'] = numero_dominio
+            
+            # Query de atualização
+            query = text(f"""
+            UPDATE clientes_contabil
+            SET {set_clause}
+            WHERE numero_dominio = :numero_dominio
+            """)
+            
+            # Executar a query
+            result = conn.execute(query, params)
+            conn.commit()
+            
+            # Verificar se alguma linha foi afetada
+            if result.rowcount == 0:
+                return JsonResponse({'erro': 'Empresa não encontrada ou nenhuma alteração realizada'}, status=404)
+        
+        # Buscar os dados atualizados
+        return detalhes_empresa(request, numero_dominio)
+        
+    except Exception as e:
+        print(f"Erro ao atualizar empresa: {str(e)}")
+        return JsonResponse({
+            'erro': 'Não foi possível atualizar os dados da empresa',
+            'detalhes': str(e)
+        }, status=500)        
