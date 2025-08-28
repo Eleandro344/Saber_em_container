@@ -20,10 +20,10 @@ import Dividas from './pages/Dividas';
 import Das from './pages/Das';
 import Enviaremaildp from './pages/Enviaremaildp';
 import Contabilidade from './pages/Contabilidade';
-
+import Textolivre from './pages/Textolivre';
 const LayoutWrapper = ({ children }) => {
   const location = useLocation();
-  const hideHeaderRoutes = ['/login', '/kanban', '/tarefas', '/IntegraContador','/Dctfweb','/Dividas','/das','/Enviaremaildp','/Contabilidade'];
+  const hideHeaderRoutes = ['/login', '/kanban', '/tarefas', '/IntegraContador','/Dctfweb','/Dividas','/das','/Enviaremaildp','/contabilidade','/Textolivre'];
   const isHeaderHidden = hideHeaderRoutes.includes(location.pathname);
 
   return (
@@ -97,6 +97,7 @@ function App() {
             <Route path="/Das" element={<Das />} />
             <Route path="/Enviaremaildp" element={<Enviaremaildp />} />
             <Route path="/Contabilidade" element={<Contabilidade />} />
+            <Route path="/Textolivre" element={<Textolivre />} />
           </Route>
         </Routes>
       </LayoutWrapper>

@@ -3425,3 +3425,90 @@ def obter_historico_contabil(request):
             'erro': 'Não foi possível buscar o histórico',
             'detalhes': str(e)
         }, status=500)
+    
+
+    #TEXTO LIVRE
+
+@csrf_exempt
+def obter_textos_livres_contabil(request):
+    if request.method != 'GET':
+        return JsonResponse({'erro': 'Método não permitido'}, status=405)
+    
+    try:
+        # Conexão com o banco
+        engine = create_engine(config('DATABASE_URL'))
+        
+        with engine.connect() as conn:
+            query = text("""
+            SELECT numero_dominio, empresa, data_hoje, texto
+            FROM texto_livre_contabil
+            ORDER BY data_hoje DESC
+            """)
+            
+            result = conn.execute(query)
+            textos = []
+            
+            for row in result:
+                textos.append({
+                    'numero_dominio': row[0],
+                    'empresa': row[1],
+                    'data_hoje': row[2].strftime('%d/%m/%Y %H:%M:%S') if row[2] else '',
+                    'texto': row[3] or ''
+                })
+        
+        return JsonResponse({
+            'textos': textos,
+            'total': len(textos)
+        })
+    
+    except Exception as e:
+        print(f"Erro ao buscar textos livres: {str(e)}")
+        return JsonResponse({
+            'erro': 'Não foi possível buscar os textos',
+            'detalhes': str(e)
+        }, status=500)
+
+@csrf_exempt
+def salvar_texto_livre_contabil(request):
+    if request.method != 'POST':
+        return JsonResponse({'erro': 'Método não permitido'}, status=405)
+    
+    try:
+        # Decodificar o corpo da requisição
+        body = json.loads(request.body.decode('utf-8'))
+        numero_dominio = body.get('numero_dominio')
+        empresa = body.get('empresa')
+        texto = body.get('texto')
+        
+        if not numero_dominio or not empresa or not texto:
+            return JsonResponse({'erro': 'Parâmetros incompletos'}, status=400)
+        
+        # Conexão com o banco
+        engine = create_engine(config('DATABASE_URL'))
+        
+        with engine.connect() as conn:
+            # Inserir novo texto livre
+            query = text("""
+            INSERT INTO texto_livre_contabil 
+            (numero_dominio, empresa, data_hoje, texto) 
+            VALUES (:numero_dominio, :empresa, CURRENT_TIMESTAMP, :texto)
+            """)
+            
+            conn.execute(query, {
+                'numero_dominio': numero_dominio,
+                'empresa': empresa,
+                'texto': texto
+            })
+            
+            conn.commit()
+        
+        return JsonResponse({
+            'mensagem': 'Texto salvo com sucesso'
+        })
+    
+    except Exception as e:
+        print(f"Erro ao salvar texto livre: {str(e)}")
+        return JsonResponse({
+            'erro': 'Não foi possível salvar o texto',
+            'detalhes': str(e)
+        }, status=500)    

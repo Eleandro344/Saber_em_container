@@ -392,51 +392,51 @@ const historicoFiltrado = historicoEntregas.filter((item) => {
           </div>
         )}
 
-        {/* Filtro do Operador e Botão Histórico */}
-        <div className="row mb-3">
-          <div className="col-md-6">
-            <label className="form-label fw-bold">Operador</label>
-            <select
-              className="form-select"
-              value={filtros.operador}
-              onChange={(e) => setFiltros(prev => ({ ...prev, operador: e.target.value }))}
-            >
-              <option value="">Todos Operadores</option>
-              {operadoresUnicos.map((operador) => (
-                <option key={operador} value={operador}>
-                  {operador}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="col-md-6 d-flex align-items-end">
-<button
-  className="btn btn-primary px-4 py-2 rounded-pill shadow-sm d-flex align-items-center"
-  onClick={carregarHistorico}
-  disabled={historicoCarregando}
-  style={{
-    fontWeight: "500",
-    transition: "all 0.3s ease",
-  }}
->
-  {historicoCarregando ? (
-    <>
-      <span
-        className="spinner-border spinner-border-sm me-2 text-light"
-        role="status"
-        aria-hidden="true"
-      ></span>
-      <span className="text-light">Carregando...</span>
-    </>
-  ) : (
-    <>
-      <i className="fas fa-history me-2"></i>
-      Ver Histórico de Entregas
-    </>
-  )}
-</button>
-          </div>
-        </div>
+{/* Filtro do Operador e Botões */}
+<div className="row mb-3">
+  <div className="col-md-4">
+    <label className="form-label fw-bold">Operador</label>
+    <select
+      className="form-select"
+      value={filtros.operador}
+      onChange={(e) => setFiltros(prev => ({ ...prev, operador: e.target.value }))}
+    >
+      <option value="">Todos Operadores</option>
+      {operadoresUnicos.map((operador) => (
+        <option key={operador} value={operador}>
+          {operador}
+        </option>
+      ))}
+    </select>
+  </div>
+  <div className="col-md-8 d-flex align-items-end gap-2">
+    <button
+      className="btn btn-outline-primary"
+      onClick={carregarHistorico}
+      disabled={historicoCarregando}
+    >
+      {historicoCarregando ? (
+        <>
+          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+          Carregando...
+        </>
+      ) : (
+        <>
+          <i className="fas fa-history me-2"></i>
+          Ver Histórico de Entregas
+        </>
+      )}
+    </button>
+    
+    <button
+      className="btn btn-outline-success"
+      onClick={() => window.location.href = '/Textolivre'}  // Redireciona para a página Textolivre
+    >
+      <i className="fas fa-edit me-2"></i>
+      Texto Livre
+    </button>
+  </div>
+</div>
 
         {/* ✅ GRÁFICO DE DESEMPENHO SEMPRE VISÍVEL */}
         {filtros.operador && (
