@@ -14,7 +14,8 @@ const Contabilidade = () => {
   const [operadoresUnicos, setOperadoresUnicos] = useState([]);
   const [detalhesEmpresa, setDetalhesEmpresa] = useState(null);
   const [mostrarModalDetalhes, setMostrarModalDetalhes] = useState(false);
-  
+  const [mostrarModalEntregaParcial, setMostrarModalEntregaParcial] = useState(false);
+  const [textoEntregaParcial, setTextoEntregaParcial] = useState('');
   // Estado para o modal de entrega
   const [mostrarModalEntrega, setMostrarModalEntrega] = useState(false);
   const [empresaSelecionada, setEmpresaSelecionada] = useState(null);
@@ -58,6 +59,52 @@ const Contabilidade = () => {
       console.error("Erro ao formatar data:", e);
       return dataString;
     }
+  };
+
+  // Função para realizar entrega parcial
+  const realizarEntregaParcial = () => {
+    if (!empresaSelecionada || !competenciaSelecionada || !textoEntregaParcial.trim()) {
+      setMensagem('Por favor, preencha o campo de observação para a entrega parcial.');
+      return;
+    }
+
+    setEntregaCarregando(true);
+    const accessToken = localStorage.getItem('access');
+
+    const [mes, anoAbreviado] = competenciaSelecionada.split('/');
+    const ano = `20${anoAbreviado}`;
+    const dia = empresaSelecionada.dt ? Math.floor(empresaSelecionada.dt) : 30;
+    const novaDataEntrega = `${dia.toString().padStart(2, '0')}/${mes}/${ano}`;
+
+    axios
+      .post(
+        `${process.env.REACT_APP_API_BASE}/api/registrar-entrega-parcial/`,
+        {
+          numero_dominio: empresaSelecionada.numero_dominio,
+          nova_data_entrega: novaDataEntrega,
+          texto_entrega_parcial: textoEntregaParcial.trim()
+        },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        }
+      )
+      .then(() => {
+        setMensagem(`Entrega parcial registrada com sucesso para a competência ${competenciaSelecionada}`);
+        setMostrarModalEntregaParcial(false);
+        setMostrarModalEntrega(false);
+        setEntregaCarregando(false);
+        setTextoEntregaParcial('');
+        carregarEmpresas();
+      })
+      .catch((error) => {
+        const errorMsg =
+          error.response?.data?.erro ||
+          error.response?.data?.mensagem ||
+          error.message ||
+          'Erro desconhecido ao registrar entrega parcial';
+        setMensagem(`Erro: ${errorMsg}`);
+        setEntregaCarregando(false);
+      });
   };
 
   // Função para gerar próximas competências (12 meses a partir da próxima entrega)
@@ -261,12 +308,10 @@ const Contabilidade = () => {
     }));
   }, [empresasFiltradas, filtros.operador]);
 
-
-/*************  ✨ Windsurf Command ⭐  *************/
-/**
- * Abre o modal com os detalhes da empresa clicada
- * @param {Object} empresa - Objeto com os dados da empresa
-/*******  50e06e80-816e-4117-a740-66c6fba59768  *******/
+  /**
+   * Abre o modal com os detalhes da empresa clicada
+   * @param {Object} empresa - Objeto com os dados da empresa
+   */
   const verDetalhesEmpresa = (empresa) => {
     const accessToken = localStorage.getItem('access');
     axios
@@ -626,26 +671,26 @@ const Contabilidade = () => {
                       <td>{empresa.proxima_entrega || '-'}</td>
                       <td>{empresa.regime || '-'}</td>
                       <td>{empresa.operador || '-'}</td>
-                            <td>
-                              <span
-                                className={`badge ${
-                                  empresa.Status_contabil === 'Concluído' || empresa.Status_contabil === 'Em Dia'
-                                    ? 'bg-success'
-                                    : empresa.Status_contabil === 'Pendente' || empresa.Status_contabil === 'Aguardando'
-                                    ? 'bg-warning'
-                                    : empresa.Status_contabil && empresa.Status_contabil.includes('Atrasado')
-                                    ? 'bg-danger'
-                                    : 'bg-success'
-                                }`}
-                                style={{ 
-                                  fontSize: '0.8rem',  // Aumenta o tamanho da fonte
-                                  fontWeight: 'light',   // Deixa em negrito
-                                  padding: '0.4em 0.6em' // Aumenta o padding interno
-                                }}
-                              >
-                                {empresa.Status_contabil || 'Não definido'}
-                              </span>
-                            </td>
+                      <td>
+                        <span
+                          className={`badge ${
+                            empresa.Status_contabil === 'Concluído' || empresa.Status_contabil === 'Em Dia'
+                              ? 'bg-success'
+                              : empresa.Status_contabil === 'Pendente' || empresa.Status_contabil === 'Aguardando'
+                              ? 'bg-warning'
+                              : empresa.Status_contabil && empresa.Status_contabil.includes('Atrasado')
+                              ? 'bg-danger'
+                              : 'bg-success'
+                          }`}
+                          style={{ 
+                            fontSize: '0.8rem',  // Aumenta o tamanho da fonte
+                            fontWeight: 'light',   // Deixa em negrito
+                            padding: '0.4em 0.6em' // Aumenta o padding interno
+                          }}
+                        >
+                          {empresa.Status_contabil || 'Não definido'}
+                        </span>
+                      </td>
                       <td>{empresa.tipo_entrega || '-'}</td>
                       <td>{empresa.controle_financeiro || '-'}</td>
                       <td style={{ width: "60px", padding: "2px" }}>
@@ -773,7 +818,7 @@ const Contabilidade = () => {
                   </p>
                 </div>
               </div>
-              <div className="modal-footer">
+              <div className="modal-footer d-flex justify-content-between">
                 <button 
                   type="button" 
                   className="btn btn-secondary" 
@@ -782,11 +827,102 @@ const Contabilidade = () => {
                 >
                   Cancelar
                 </button>
+                <div>
+                  <button 
+                    type="button" 
+                    className="btn btn-warning me-2"
+                    onClick={() => setMostrarModalEntregaParcial(true)}
+                    disabled={entregaCarregando}
+                  >
+                    Entrega Parcial
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-primary"
+                    onClick={realizarEntrega}
+                    disabled={!competenciaSelecionada || entregaCarregando}
+                  >
+                    {entregaCarregando ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Processando...
+                      </>
+                    ) : (
+                      'Confirmar Entrega'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Entrega Parcial */}
+      {mostrarModalEntregaParcial && (
+        <div className="modal" tabIndex="-1" style={{display: 'block', backgroundColor: 'rgba(0,0,0,0.5)'}}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Entrega Parcial</h5>
                 <button 
                   type="button" 
-                  className="btn btn-primary"
-                  onClick={realizarEntrega}
-                  disabled={!competenciaSelecionada || entregaCarregando}
+                  className="btn-close" 
+                  onClick={() => {
+                    setMostrarModalEntregaParcial(false);
+                    setTextoEntregaParcial('');
+                  }}
+                  disabled={entregaCarregando}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <p><strong>Empresa:</strong> {empresaSelecionada?.empresa}</p>
+                  <p><strong>Competência:</strong> {competenciaSelecionada}</p>
+                </div>
+                
+                <div className="mb-3">
+                  <label className="form-label">
+                    <strong>Observação da Entrega Parcial:</strong>
+                    <span className="text-danger">*</span>
+                  </label>
+                  <textarea 
+                    className="form-control"
+                    rows="4"
+                    placeholder="Descreva o que foi entregue parcialmente (ex: documentos enviados, DRE pendente, etc.)"
+                    value={textoEntregaParcial}
+                    onChange={(e) => setTextoEntregaParcial(e.target.value)}
+                    disabled={entregaCarregando}
+                    maxLength="500"
+                  />
+                  <small className="text-muted">
+                    {textoEntregaParcial.length}/500 caracteres
+                  </small>
+                </div>
+                
+                <div className="alert alert-info">
+                  <i className="fas fa-info-circle me-2"></i>
+                  <strong>Atenção:</strong> A entrega parcial registrará o progresso da competência, 
+                  mas manterá o status como em andamento. Descreva claramente o que foi entregue.
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => {
+                    setMostrarModalEntregaParcial(false);
+                    setTextoEntregaParcial('');
+                  }}
+                  disabled={entregaCarregando}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-warning"
+                  onClick={realizarEntregaParcial}
+                  disabled={!textoEntregaParcial.trim() || entregaCarregando}
                 >
                   {entregaCarregando ? (
                     <>
@@ -794,7 +930,7 @@ const Contabilidade = () => {
                       Processando...
                     </>
                   ) : (
-                    'Confirmar Entrega'
+                    'Confirmar Entrega Parcial'
                   )}
                 </button>
               </div>
@@ -806,4 +942,4 @@ const Contabilidade = () => {
   );
 }
 
-export default Contabilidade
+export default Contabilidade;
