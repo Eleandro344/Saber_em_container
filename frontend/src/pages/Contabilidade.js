@@ -3,8 +3,11 @@ import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import '../styles/Contabilidade.css';
 
-// ✅ Import do Recharts
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+// Imports do Recharts para ambos os gráficos
+import { 
+  PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip 
+} from 'recharts';
 
 const Contabilidade = () => {
   const [empresas, setEmpresas] = useState([]);
@@ -321,21 +324,21 @@ const Contabilidade = () => {
     });
   });
 
-// Filtro para o histórico - atualize esta parte no seu código
-const historicoFiltrado = historicoEntregas.filter((item) => {
-  if (!filtroHistorico) return true;
-  
-  const filtroLower = filtroHistorico.toLowerCase();
-  return (
-    item.empresa.toLowerCase().includes(filtroLower) ||
-    item.entregue.toLowerCase().includes(filtroLower) ||
-    item.numero_dominio.toString().includes(filtroLower) ||
-    (item.texto_livre && item.texto_livre.toLowerCase().includes(filtroLower)) ||
-    (item.tipo_entrega && item.tipo_entrega.toLowerCase().includes(filtroLower)) // ✅ Filtro por tipo
-  );
-});
+  // Filtro para o histórico
+  const historicoFiltrado = historicoEntregas.filter((item) => {
+    if (!filtroHistorico) return true;
+    
+    const filtroLower = filtroHistorico.toLowerCase();
+    return (
+      item.empresa.toLowerCase().includes(filtroLower) ||
+      item.entregue.toLowerCase().includes(filtroLower) ||
+      item.numero_dominio.toString().includes(filtroLower) ||
+      (item.texto_livre && item.texto_livre.toLowerCase().includes(filtroLower)) ||
+      (item.tipo_entrega && item.tipo_entrega.toLowerCase().includes(filtroLower))
+    );
+  });
 
-  // ✅ Dados para o gráfico (agrupa por Status_contabil normalizado)
+  // Dados para o gráfico de pizza (agrupa por Status_contabil normalizado)
   const desempenhoOperador = React.useMemo(() => {
     if (!filtros.operador) return [];
 
@@ -351,6 +354,61 @@ const historicoFiltrado = historicoEntregas.filter((item) => {
       name: status,
       value: total
     }));
+  }, [empresasFiltradas, filtros.operador]);
+  
+  // Função para agrupar as próximas entregas por prazos
+  const calcularEntregasPorPrazo = React.useMemo(() => {
+    if (!empresasFiltradas.length || !filtros.operador) return [];
+    
+    // Filtrar apenas empresas do operador selecionado
+    const empresasDoOperador = empresasFiltradas.filter(emp => emp.operador === filtros.operador);
+    
+    // Categorias de prazos (em dias)
+    const categorias = [
+      { label: "Atrasadas", min: -999, max: -1, color: "#dc3545" },
+      { label: "Hoje", min: 0, max: 0, color: "#ffc107" },
+      { label: "7 dias", min: 1, max: 7, color: "#17a2b8" },
+      { label: "15 dias", min: 8, max: 15, color: "#28a745" },
+      { label: "30 dias", min: 16, max: 30, color: "#6610f2" },
+      { label: "+30 dias", min: 31, max: 999, color: "#6c757d" }
+    ];
+    
+    // Inicializar contadores
+    const contadores = categorias.map(cat => ({
+      name: cat.label,
+      value: 0,
+      color: cat.color
+    }));
+    
+    // Calcular dias até a próxima entrega para cada empresa
+    empresasDoOperador.forEach(empresa => {
+      if (!empresa.Status_contabil) return;
+      
+      let diasRestantes = null;
+      
+      // Extrair dias do status (formato: "Em Dia (X dias)" ou "Atrasado (X dias)")
+      const match = empresa.Status_contabil.match(/\((\d+) dias\)/);
+      if (match && match[1]) {
+        diasRestantes = parseInt(match[1]);
+        
+        // Se está atrasado, converter para número negativo
+        if (empresa.Status_contabil.toLowerCase().includes("atrasado")) {
+          diasRestantes = -diasRestantes;
+        }
+        
+        // Incrementar o contador na categoria apropriada
+        for (let i = 0; i < categorias.length; i++) {
+          const cat = categorias[i];
+          if (diasRestantes >= cat.min && diasRestantes <= cat.max) {
+            contadores[i].value++;
+            break;
+          }
+        }
+      }
+    });
+    
+    // Filtrar apenas categorias com valores > 0
+    return contadores.filter(item => item.value > 0);
   }, [empresasFiltradas, filtros.operador]);
 
   /**
@@ -392,118 +450,182 @@ const historicoFiltrado = historicoEntregas.filter((item) => {
           </div>
         )}
 
-{/* Filtro do Operador e Botões */}
-<div className="row mb-3">
-  <div className="col-md-4">
-    <label className="form-label fw-bold">Operador</label>
-    <select
-      className="form-select"
-      value={filtros.operador}
-      onChange={(e) => setFiltros(prev => ({ ...prev, operador: e.target.value }))}
-    >
-      <option value="">Todos Operadores</option>
-      {operadoresUnicos.map((operador) => (
-        <option key={operador} value={operador}>
-          {operador}
-        </option>
-      ))}
-    </select>
-  </div>
-  <div className="col-md-8 d-flex align-items-end gap-2">
-    <button
-      className="btn btn-outline-primary"
-      onClick={carregarHistorico}
-      disabled={historicoCarregando}
-    >
-      {historicoCarregando ? (
-        <>
-          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-          Carregando...
-        </>
-      ) : (
-        <>
-          <i className="fas fa-history me-2"></i>
-          Ver Histórico de Entregas
-        </>
-      )}
-    </button>
-    
-    <button
-      className="btn btn-outline-success"
-      onClick={() => window.location.href = '/Textolivre'}  // Redireciona para a página Textolivre
-    >
-      <i className="fas fa-edit me-2"></i>
-      Texto Livre
-    </button>
-  </div>
-</div>
+        {/* Filtro do Operador e Botões */}
+        <div className="row mb-3">
+          <div className="col-md-4">
+            <label className="form-label fw-bold">Operador</label>
+            <select
+              className="form-select"
+              value={filtros.operador}
+              onChange={(e) => setFiltros(prev => ({ ...prev, operador: e.target.value }))}
+            >
+              <option value="">Todos Operadores</option>
+              {operadoresUnicos.map((operador) => (
+                <option key={operador} value={operador}>
+                  {operador}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="col-md-8 d-flex align-items-end gap-2">
+            <button
+              className="btn btn-outline-primary"
+              onClick={carregarHistorico}
+              disabled={historicoCarregando}
+            >
+              {historicoCarregando ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  Carregando...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-history me-2"></i>
+                  Ver Histórico de Entregas
+                </>
+              )}
+            </button>
+            
+            <button
+              className="btn btn-outline-success"
+              onClick={() => window.location.href = '/Textolivre'}
+            >
+              <i className="fas fa-edit me-2"></i>
+              Texto Livre
+            </button>
+          </div>
+        </div>
 
-        {/* ✅ GRÁFICO DE DESEMPENHO SEMPRE VISÍVEL */}
+        {/* GRÁFICOS DE DESEMPENHO */}
         {filtros.operador && (
           <div className="mb-4 p-3 border rounded bg-light">
             <h5 className="mb-3 text-center">
               <i className="fas fa-chart-pie me-2"></i>
               Desempenho do Operador: {filtros.operador}
             </h5>
-            <div className="d-flex justify-content-center">
-              {desempenhoOperador.length > 0 ? (
-                <ResponsiveContainer width="100%" height={350}>
-                  <PieChart>
-                    <Pie
-                      data={desempenhoOperador}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={120}
-                      innerRadius={70}
-                      paddingAngle={4}
-                      cornerRadius={10}
-                      isAnimationActive={true}
-                      label={({ name, percent }) =>
-                        `${name}: ${(percent * 100).toFixed(0)}%`
-                      }
-                      stroke="#fff"
+            
+            <div className="row">
+              {/* Gráfico de Pizza - Status */}
+              <div className="col-md-6">
+                <h6 className="text-center mb-2">Distribuição de Status</h6>
+                {desempenhoOperador.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={350}>
+                    <PieChart>
+                      <Pie
+                        data={desempenhoOperador}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={120}
+                        innerRadius={70}
+                        paddingAngle={4}
+                        cornerRadius={10}
+                        isAnimationActive={true}
+                        label={({ name, percent }) =>
+                          `${name}: ${(percent * 100).toFixed(0)}%`
+                        }
+                        stroke="#fff"
+                      >
+                        {desempenhoOperador.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={
+                              entry.name === "Concluído" || entry.name === "Em Dia"
+                                ? "#28a745"
+                                : entry.name === "Pendente" || entry.name === "Aguardando"
+                                ? "#ffc107"
+                                : entry.name === "Atrasado"
+                                ? "#dc3545"
+                                : "#6c757d"
+                            }
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#c2e03bff",
+                          border: "none",
+                          borderRadius: "8px",
+                          color: "#fff",
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                        }}
+                        formatter={(value, name) => [`${value}`, name]}
+                      />
+                      <Legend
+                        verticalAlign="bottom"
+                        iconSize={14}
+                        wrapperStyle={{
+                          marginTop: "20px",
+                          fontSize: "14px",
+                          fontWeight: "500",
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-muted mt-4 text-center">Nenhum dado disponível para este operador.</p>
+                )}
+              </div>
+              
+              {/* Gráfico de Colunas - Prazos de Entregas */}
+              <div className="col-md-6">
+                <h6 className="text-center mb-2">Próximas Entregas por Prazo</h6>
+                {calcularEntregasPorPrazo.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart
+                      data={calcularEntregasPorPrazo}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                     >
-                      {desempenhoOperador.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={
-                            entry.name === "Concluído" || entry.name === "Em Dia"
-                              ? "#28a745"
-                              : entry.name === "Pendente" || entry.name === "Aguardando"
-                              ? "#ffc107"
-                              : entry.name === "Atrasado"
-                              ? "#dc3545"
-                              : "#6c757d"
-                          }
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#343a40",
-                        border: "none",
-                        borderRadius: "8px",
-                        color: "#fff",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-                      }}
-                      formatter={(value, name) => [`${value}`, name]}
-                    />
-                    <Legend
-                      verticalAlign="bottom"
-                      iconSize={14}
-                      wrapperStyle={{
-                        marginTop: "20px",
-                        fontSize: "14px",
-                        fontWeight: "500",
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <p className="text-muted mt-4">Nenhum dado disponível para este operador.</p>
-              )}
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis allowDecimals={false} />
+                      <RechartsTooltip
+                        contentStyle={{
+                          backgroundColor: "#c1db2eff",
+                          border: "none",
+                          borderRadius: "8px",
+                          color: "#fff",
+                          boxShadow: "0 2px 8px rgba(214, 162, 66, 0.3)",
+                        }}
+                        formatter={(value) => [`${value} entregas`, 'Quantidade']}
+                      />
+                      <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                        {calcularEntregasPorPrazo.map((entry, index) => (
+                          <Cell key={`bar-cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-muted mt-4 text-center">Nenhum prazo de entrega disponível.</p>
+                )}
+              </div>
+            </div>
+            
+            <div className="row mt-3">
+              <div className="col-12">
+                <div className="d-flex justify-content-center gap-3 flex-wrap">
+                  <small className="text-muted">
+                    <span className="badge" style={{backgroundColor: "#dc3545"}}></span> Atrasadas
+                  </small>
+                  <small className="text-muted">
+                    <span className="badge" style={{backgroundColor: "#ffc107"}}></span> Hoje
+                  </small>
+                  <small className="text-muted">
+                    <span className="badge" style={{backgroundColor: "#17a2b8"}}></span> Próximos 7 dias
+                  </small>
+                  <small className="text-muted">
+                    <span className="badge" style={{backgroundColor: "#28a745"}}></span> 8-15 dias
+                  </small>
+                  <small className="text-muted">
+                    <span className="badge" style={{backgroundColor: "#6610f2"}}></span> 16-30 dias
+                  </small>
+                  <small className="text-muted">
+                    <span className="badge" style={{backgroundColor: "#6c757d"}}></span> +30 dias
+                  </small>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -756,9 +878,9 @@ const historicoFiltrado = historicoEntregas.filter((item) => {
                               : 'bg-success'
                           }`}
                           style={{ 
-                            fontSize: '0.8rem',  // Aumenta o tamanho da fonte
-                            fontWeight: 'light',   // Deixa em negrito
-                            padding: '0.4em 0.6em' // Aumenta o padding interno
+                            fontSize: '0.8rem',
+                            fontWeight: 'light',
+                            padding: '0.4em 0.6em'
                           }}
                         >
                           {empresa.Status_contabil || 'Não definido'}
@@ -791,7 +913,7 @@ const historicoFiltrado = historicoEntregas.filter((item) => {
                 </tbody>
               </table>
 
-              {/* ✅ Mostrando apenas total de registros filtrados */}
+              {/* Mostrando apenas total de registros filtrados */}
               <div className="mt-3 text-end">
                 <span className="text-muted">
                   Total de registros encontrados: {empresasFiltradas.length}
@@ -850,132 +972,132 @@ const historicoFiltrado = historicoEntregas.filter((item) => {
         </div>
       )}
 
-{/* Modal de Histórico */}
-{mostrarModalHistorico && (
-  <div className="modal" tabIndex="-1" style={{display: 'block', backgroundColor: 'rgba(0,0,0,0.5)'}}>
-    <div className="modal-dialog" style={{ maxWidth: '95vw', width: '95vw' }}>
-      <div className="modal-content">
-        <div className="modal-header">
-          <h5 className="modal-title">
-            <i className="fas fa-history me-2"></i>
-            Histórico de Entregas
-          </h5>
-          <button 
-            type="button" 
-            className="btn-close" 
-            onClick={() => {
-              setMostrarModalHistorico(false);
-              setFiltroHistorico('');
-            }}
-          ></button>
-        </div>
-        <div className="modal-body">
-          {/* Campo de filtro do histórico */}
-          <div className="mb-3">
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Filtrar por empresa, competência, domínio, tipo ou observação..."
-              value={filtroHistorico}
-              onChange={(e) => setFiltroHistorico(e.target.value)}
-            />
-          </div>
+      {/* Modal de Histórico */}
+      {mostrarModalHistorico && (
+        <div className="modal" tabIndex="-1" style={{display: 'block', backgroundColor: 'rgba(0,0,0,0.5)'}}>
+          <div className="modal-dialog" style={{ maxWidth: '95vw', width: '95vw' }}>
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  <i className="fas fa-history me-2"></i>
+                  Histórico de Entregas
+                </h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => {
+                    setMostrarModalHistorico(false);
+                    setFiltroHistorico('');
+                  }}
+                ></button>
+              </div>
+              <div className="modal-body">
+                {/* Campo de filtro do histórico */}
+                <div className="mb-3">
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Filtrar por empresa, competência, domínio, tipo ou observação..."
+                    value={filtroHistorico}
+                    onChange={(e) => setFiltroHistorico(e.target.value)}
+                  />
+                </div>
 
-          <div className="table-responsive" style={{ maxHeight: '600px', overflowY: 'auto' }}>
-            <table className="table table-striped table-hover">
-              <thead className="table-dark sticky-top">
-                <tr>
-                  <th style={{ minWidth: '160px' }}>Data/Hora</th>
-                  <th style={{ minWidth: '280px' }}>Empresa</th>
-                  <th style={{ minWidth: '110px' }}>Competência</th>
-                  <th style={{ minWidth: '100px' }}>Nº Domínio</th>
-                  <th style={{ minWidth: '100px' }}>Tipo</th>
-                  <th style={{ minWidth: '300px' }}>Observação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historicoFiltrado.length > 0 ? (
-                  historicoFiltrado.map((item) => (
-                    <tr key={item.id}>
-                      <td style={{ minWidth: '160px', fontSize: '0.85rem' }}>{item.data_hoje}</td>
-                      <td style={{ minWidth: '280px', fontSize: '0.9rem' }} className="fw-semibold">{item.empresa}</td>
-                      <td style={{ minWidth: '110px', fontSize: '0.9rem' }} className="text-center">
-                        <span className="badge bg-primary">{item.entregue}</span>
-                      </td>
-                      <td style={{ minWidth: '100px', fontSize: '0.9rem' }} className="text-center">{item.numero_dominio}</td>
-                      <td style={{ minWidth: '100px', fontSize: '0.9rem' }} className="text-center">
-                        <span 
-                          className={`badge ${
-                            item.tipo_entrega === 'Parcial' 
-                              ? 'bg-warning text-dark' 
-                              : 'bg-success'
-                          }`}
-                        >
-                          {item.tipo_entrega || 'Completa'}
-                        </span>
-                      </td>
-                      <td style={{ minWidth: '300px', fontSize: '0.9rem' }}>
-                        {item.texto_livre ? (
-                          <div className="text-info">
-                            <i className="fas fa-comment-dots me-2"></i>
-                            <span className="fst-italic">{item.texto_livre}</span>
-                          </div>
-                        ) : (
-                          <span className="text-muted">
-                            <i className="fas fa-minus me-2"></i>
-                            Sem observações
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="6" className="text-center text-muted py-4">
-                      {filtroHistorico ? 'Nenhum registro encontrado com esse filtro.' : 'Nenhum histórico disponível.'}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                <div className="table-responsive" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                  <table className="table table-striped table-hover">
+                    <thead className="table-dark sticky-top">
+                      <tr>
+                        <th style={{ minWidth: '160px' }}>Data/Hora</th>
+                        <th style={{ minWidth: '280px' }}>Empresa</th>
+                        <th style={{ minWidth: '110px' }}>Competência</th>
+                        <th style={{ minWidth: '100px' }}>Nº Domínio</th>
+                        <th style={{ minWidth: '100px' }}>Tipo</th>
+                        <th style={{ minWidth: '300px' }}>Observação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historicoFiltrado.length > 0 ? (
+                        historicoFiltrado.map((item) => (
+                          <tr key={item.id}>
+                            <td style={{ minWidth: '160px', fontSize: '0.85rem' }}>{item.data_hoje}</td>
+                            <td style={{ minWidth: '280px', fontSize: '0.9rem' }} className="fw-semibold">{item.empresa}</td>
+                            <td style={{ minWidth: '110px', fontSize: '0.9rem' }} className="text-center">
+                              <span className="badge bg-primary">{item.entregue}</span>
+                            </td>
+                            <td style={{ minWidth: '100px', fontSize: '0.9rem' }} className="text-center">{item.numero_dominio}</td>
+                            <td style={{ minWidth: '100px', fontSize: '0.9rem' }} className="text-center">
+                              <span 
+                                className={`badge ${
+                                  item.tipo_entrega === 'Parcial' 
+                                    ? 'bg-warning text-dark' 
+                                    : 'bg-success'
+                                }`}
+                              >
+                                {item.tipo_entrega || 'Completa'}
+                              </span>
+                            </td>
+                            <td style={{ minWidth: '300px', fontSize: '0.9rem' }}>
+                              {item.texto_livre ? (
+                                <div className="text-info">
+                                  <i className="fas fa-comment-dots me-2"></i>
+                                  <span className="fst-italic">{item.texto_livre}</span>
+                                </div>
+                              ) : (
+                                <span className="text-muted">
+                                  <i className="fas fa-minus me-2"></i>
+                                  Sem observações
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="6" className="text-center text-muted py-4">
+                            {filtroHistorico ? 'Nenhum registro encontrado com esse filtro.' : 'Nenhum histórico disponível.'}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
 
-          <div className="mt-3 d-flex justify-content-between align-items-center">
-            <small className="text-muted">
-              Total de registros: <strong>{historicoFiltrado.length}</strong>
-            </small>
-            <div className="d-flex gap-3">
-              <small className="text-muted">
-                <span className="badge bg-success me-1"></span>
-                Completa
-              </small>
-              <small className="text-muted">
-                <span className="badge bg-warning text-dark me-1"></span>
-                Parcial
-              </small>
+                <div className="mt-3 d-flex justify-content-between align-items-center">
+                  <small className="text-muted">
+                    Total de registros: <strong>{historicoFiltrado.length}</strong>
+                  </small>
+                  <div className="d-flex gap-3">
+                    <small className="text-muted">
+                      <span className="badge bg-success me-1"></span>
+                      Completa
+                    </small>
+                    <small className="text-muted">
+                      <span className="badge bg-warning text-dark me-1"></span>
+                      Parcial
+                    </small>
+                  </div>
+                  <small className="text-muted">
+                    Últimos 1000 registros ordenados por data mais recente
+                  </small>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => {
+                    setMostrarModalHistorico(false);
+                    setFiltroHistorico('');
+                  }}
+                >
+                  <i className="fas fa-times me-2"></i>
+                  Fechar
+                </button>
+              </div>
             </div>
-            <small className="text-muted">
-              Últimos 1000 registros ordenados por data mais recente
-            </small>
           </div>
         </div>
-        <div className="modal-footer">
-          <button 
-            type="button" 
-            className="btn btn-secondary" 
-            onClick={() => {
-              setMostrarModalHistorico(false);
-              setFiltroHistorico('');
-            }}
-          >
-            <i className="fas fa-times me-2"></i>
-            Fechar
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
 
       {/* Modal de Entrega */}
       {mostrarModalEntrega && empresaSelecionada && (
