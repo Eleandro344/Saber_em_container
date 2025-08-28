@@ -15,6 +15,18 @@ const Contabilidade = () => {
   const [detalhesEmpresa, setDetalhesEmpresa] = useState(null);
   const [mostrarModalDetalhes, setMostrarModalDetalhes] = useState(false);
 
+  // Função para normalizar o status (extrair apenas a primeira palavra)
+  const normalizarStatus = (status) => {
+    if (!status) return "Não definido";
+    
+    // Se o status contém parênteses, extrair apenas a parte antes do parêntese
+    if (status.includes('(')) {
+      return status.split('(')[0].trim();
+    }
+    
+    return status;
+  };
+
   // Função para formatar a data para competência
   const formatarCompetencia = (dataString) => {
     if (!dataString) return '-';
@@ -134,7 +146,7 @@ const Contabilidade = () => {
     });
   });
 
-  // ✅ Dados para o gráfico (agrupa por Status_contabil)
+  // ✅ Dados para o gráfico (agrupa por Status_contabil normalizado)
   const desempenhoOperador = React.useMemo(() => {
     if (!filtros.operador) return [];
 
@@ -142,7 +154,7 @@ const Contabilidade = () => {
     empresasFiltradas
       .filter(emp => emp.operador === filtros.operador)
       .forEach(emp => {
-        const status = emp.Status_contabil || "Não definido";
+        const status = normalizarStatus(emp.Status_contabil);
         dados[status] = (dados[status] || 0) + 1;
       });
 
@@ -497,15 +509,11 @@ const Contabilidade = () => {
                       <td>
                         <span
                           className={`badge ${
-                            empresa.Status_contabil === 'Concluído'
+                            empresa.Status_contabil === 'Concluído' || empresa.Status_contabil === 'Em Dia'
                               ? 'bg-success'
-                              : empresa.Status_contabil === 'Pendente'
+                              : empresa.Status_contabil === 'Pendente' || empresa.Status_contabil === 'Aguardando'
                               ? 'bg-warning'
-                              : empresa.Status_contabil === 'Em Dia'
-                              ? 'bg-success'
-                              : empresa.Status_contabil === 'Aguardando'
-                              ? 'bg-warning'
-                              : empresa.Status_contabil === 'Atrasado'
+                              : empresa.Status_contabil && empresa.Status_contabil.includes('Atrasado')
                               ? 'bg-danger'
                               : 'bg-secondary'
                           }`}

@@ -2926,7 +2926,7 @@ def calcular_proxima_entrega(ultima_entrega_str, tipo_entrega, data_dia=None):
     try:
         # Se não tiver última entrega ou tipo de entrega, retorna None
         if not ultima_entrega_str or not tipo_entrega:
-            return None
+            return (None, None)
         
         # Converte a string de data para um objeto datetime
         if isinstance(ultima_entrega_str, str):
@@ -2937,7 +2937,7 @@ def calcular_proxima_entrega(ultima_entrega_str, tipo_entrega, data_dia=None):
                     year, month, day = data_parts
                     ultima_entrega = datetime(int(year), int(month), int(day))
                 else:
-                    return None
+                    return (None, None)
             # Tenta formato "31/12/2024 00:00"
             elif '/' in ultima_entrega_str:
                 data_parts = ultima_entrega_str.split(' ')[0].split('/')
@@ -2945,13 +2945,13 @@ def calcular_proxima_entrega(ultima_entrega_str, tipo_entrega, data_dia=None):
                     day, month, year = data_parts
                     ultima_entrega = datetime(int(year), int(month), int(day))
                 else:
-                    return None
+                    return (None, None)
             else:
-                return None
+                return (None, None)
         elif isinstance(ultima_entrega_str, datetime):
             ultima_entrega = ultima_entrega_str
         else:
-            return None
+            return (None, None)
         
         # Determina o dia do mês para a próxima entrega
         # Se data_dia for fornecido, tente usá-lo como inteiro
@@ -2993,10 +2993,32 @@ def calcular_proxima_entrega(ultima_entrega_str, tipo_entrega, data_dia=None):
         proxima_entrega = proxima_entrega.replace(day=dia_ajustado)
         
         # Formata como string DD/MM/YY
-        return f"{proxima_entrega.day:02d}/{proxima_entrega.month:02d}/{str(proxima_entrega.year)[2:]}"
+        return (proxima_entrega, f"{proxima_entrega.day:02d}/{proxima_entrega.month:02d}/{str(proxima_entrega.year)[2:]}")
     
     except Exception as e:
         print(f"Erro ao calcular próxima entrega: {str(e)}")
+        return (None, None)
+
+# Função para verificar se a entrega está atrasada
+def verificar_status_entrega(proxima_entrega_date):
+    try:
+        # Se não houver data de próxima entrega, retorna o status original
+        if proxima_entrega_date is None:
+            return None
+            
+        # Obter a data atual
+        hoje = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # Comparar a data de próxima entrega com a data atual
+        if proxima_entrega_date < hoje:
+            # Calcular dias de atraso
+            dias_atraso = (hoje - proxima_entrega_date).days
+            return f"Atrasado ({dias_atraso} dias)"
+            
+        return None  # Não está atrasado, usar status original
+        
+    except Exception as e:
+        print(f"Erro ao verificar status de entrega: {str(e)}")
         return None
 
 @csrf_exempt
@@ -3028,19 +3050,40 @@ def empresas_contabil(request):
         df = df.where(pd.notnull(df), None)
         
         # Converter para lista de dicionários com tratamento de tipos
-        data = df.apply(lambda row: {
-            'numero_dominio': str(row['numero_dominio']) if row['numero_dominio'] is not None else None,
-            'empresa': row['empresa'],
-            'drive_cliente': row['drive_cliente'],
-            'dt': str(row['dt']) if row['dt'] is not None else None,
-            'ultima_entrega': row['ultima_entrega'],
-            'proxima_entrega': calcular_proxima_entrega(row['ultima_entrega'], row['tipo_entrega'], row['dt']),
-            'regime': row['regime'],
-            'operador': row['operador'],
-            'Status_contabil': row['Status_contabil'],
-            'tipo_entrega': row['tipo_entrega'],
-            'controle_financeiro': row['controle_financeiro']
-        }, axis=1).tolist()
+        data = []
+        for _, row in df.iterrows():
+            # Calcular próxima entrega (retorna tanto o objeto datetime quanto a string formatada)
+            resultado = calcular_proxima_entrega(
+                row['ultima_entrega'], 
+                row['tipo_entrega'], 
+                row['dt']
+            )
+            
+            # Desempacota apenas se não for None
+            if resultado[0] is not None:
+                proxima_entrega_date, proxima_entrega_str = resultado
+                # Verificar se está atrasado
+                status_calculado = verificar_status_entrega(proxima_entrega_date)
+            else:
+                proxima_entrega_str = None
+                status_calculado = None
+            
+            # Usar o status calculado se estiver atrasado, caso contrário usar o do banco
+            status_final = status_calculado if status_calculado else row['Status_contabil']
+            
+            data.append({
+                'numero_dominio': str(row['numero_dominio']) if row['numero_dominio'] is not None else None,
+                'empresa': row['empresa'],
+                'drive_cliente': row['drive_cliente'],
+                'dt': str(row['dt']) if row['dt'] is not None else None,
+                'ultima_entrega': row['ultima_entrega'],
+                'proxima_entrega': proxima_entrega_str,
+                'regime': row['regime'],
+                'operador': row['operador'],
+                'Status_contabil': status_final,
+                'tipo_entrega': row['tipo_entrega'],
+                'controle_financeiro': row['controle_financeiro']
+            })
         
         return JsonResponse({
             'empresas': data,
@@ -3055,7 +3098,6 @@ def empresas_contabil(request):
             'erro': 'Não foi possível carregar as empresas',
             'detalhes': str(e)
         }, status=500)
-    
 
 # VER MAIS DETALHES DA EMPRESA
 @csrf_exempt
@@ -3083,11 +3125,24 @@ def detalhes_empresa(request, numero_dominio):
         data = df.iloc[0].to_dict()
         
         # Adicionar campo de próxima entrega
-        data['proxima_entrega'] = calcular_proxima_entrega(
+        resultado = calcular_proxima_entrega(
             data.get('ultima_entrega'), 
             data.get('tipo_entrega'),
             data.get('dt')
         )
+        
+        # Desempacota apenas se não for None
+        if resultado[0] is not None:
+            proxima_entrega_date, proxima_entrega_str = resultado
+            # Verificar se está atrasado
+            status_calculado = verificar_status_entrega(proxima_entrega_date)
+            data['proxima_entrega'] = proxima_entrega_str
+            
+            # Usar o status calculado se estiver atrasado
+            if status_calculado:
+                data['Status_contabil'] = status_calculado
+        else:
+            data['proxima_entrega'] = None
         
         # Transformar a data de última entrega para o formato de competência
         if 'ultima_entrega' in data and data['ultima_entrega'] is not None:
