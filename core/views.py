@@ -2981,6 +2981,8 @@ def calcular_proxima_entrega(ultima_entrega_str, tipo_entrega, data_dia=None):
             proxima_entrega = ultima_entrega + relativedelta(months=1)
         elif tipo_entrega.lower() == 'quarter':
             proxima_entrega = ultima_entrega + relativedelta(months=3)
+        elif tipo_entrega.lower() == 'semestral':
+            proxima_entrega = ultima_entrega + relativedelta(months=6)            
         elif tipo_entrega.lower() == 'anual':
             proxima_entrega = ultima_entrega + relativedelta(years=1)
         else:
@@ -3165,3 +3167,64 @@ def detalhes_empresa(request, numero_dominio):
             'erro': 'Não foi possível carregar os detalhes da empresa',
             'detalhes': str(e)
         }, status=500)
+
+@csrf_exempt
+def registrar_entrega(request):
+    if request.method != 'POST':
+        return JsonResponse({'erro': 'Método não permitido'}, status=405)
+    
+    try:
+        # Decodificar o corpo da requisição
+        body = json.loads(request.body.decode('utf-8'))
+        numero_dominio = body.get('numero_dominio')
+        nova_data_entrega = body.get('nova_data_entrega')
+        
+        if not numero_dominio or not nova_data_entrega:
+            return JsonResponse({'erro': 'Parâmetros incompletos'}, status=400)
+        
+        # Converter a nova data para o formato do banco de dados
+        try:
+            # Assumindo que a data vem no formato DD/MM/YYYY
+            dia, mes, ano = nova_data_entrega.split('/')
+            # Formatar para YYYY-MM-DD 00:00:00
+            data_formatada = f"{ano}-{mes}-{dia} 00:00:00"
+        except Exception as e:
+            return JsonResponse({'erro': f'Formato de data inválido: {str(e)}'}, status=400)
+        
+        # Conexão com o banco
+        engine = create_engine(config('DATABASE_URL'))
+        
+        # Atualizar a data da última entrega e o status
+        with engine.connect() as conn:
+            # 1. Primeiro, buscar informações da empresa para calcular o status correto
+            query_select = text("""
+            SELECT tipo_entrega, dt
+            FROM clientes_contabil
+            WHERE numero_dominio = :numero_dominio
+            """)
+            
+            result = conn.execute(query_select, {'numero_dominio': numero_dominio})
+            empresa_info = result.fetchone()
+            
+            if not empresa_info:
+                return JsonResponse({'erro': 'Empresa não encontrada'}, status=404)
+                
+            tipo_entrega = empresa_info[0]
+            dt = empresa_info[1]
+            
+            # 2. Atualizar a última entrega e o status
+            # Como acabamos de registrar uma entrega, o status deve ser "Em Dia"
+            query_update = text("""
+            UPDATE clientes_contabil
+            SET ultima_entrega = :nova_data, Status_contabil = 'Em Dia'
+            WHERE numero_dominio = :numero_dominio
+            """)
+            
+            conn.execute(query_update, {'nova_data': data_formatada, 'numero_dominio': numero_dominio})
+            conn.commit()
+        
+        return JsonResponse({'mensagem': 'Entrega registrada com sucesso'})
+    
+    except Exception as e:
+        print(f"Erro ao registrar entrega: {str(e)}")
+        return JsonResponse({'erro': str(e)}, status=500)

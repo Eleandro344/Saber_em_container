@@ -14,6 +14,13 @@ const Contabilidade = () => {
   const [operadoresUnicos, setOperadoresUnicos] = useState([]);
   const [detalhesEmpresa, setDetalhesEmpresa] = useState(null);
   const [mostrarModalDetalhes, setMostrarModalDetalhes] = useState(false);
+  
+  // Estado para o modal de entrega
+  const [mostrarModalEntrega, setMostrarModalEntrega] = useState(false);
+  const [empresaSelecionada, setEmpresaSelecionada] = useState(null);
+  const [competenciaSelecionada, setCompetenciaSelecionada] = useState('');
+  const [proximasCompetencias, setProximasCompetencias] = useState([]);
+  const [entregaCarregando, setEntregaCarregando] = useState(false);
 
   // Função para normalizar o status (extrair apenas a primeira palavra)
   const normalizarStatus = (status) => {
@@ -51,6 +58,43 @@ const Contabilidade = () => {
       console.error("Erro ao formatar data:", e);
       return dataString;
     }
+  };
+
+  // Função para gerar próximas competências (12 meses a partir da próxima entrega)
+  const gerarProximasCompetencias = (dataProximaEntrega) => {
+    const competencias = [];
+    
+    try {
+      if (!dataProximaEntrega) return competencias;
+      
+      // Extrair o mês e ano da próxima entrega
+      let mes, ano;
+      
+      // Formato "30/02/2025"
+      if (dataProximaEntrega.includes('/')) {
+        const partes = dataProximaEntrega.split('/');
+        if (partes.length === 3) {
+          mes = parseInt(partes[1]);
+          ano = parseInt(partes[2]);
+        } else {
+          return competencias;
+        }
+      } else {
+        return competencias;
+      }
+      
+      // Gerar 12 competências a partir da próxima entrega
+      for (let i = 0; i < 12; i++) {
+        const novoMes = ((mes - 1 + i) % 12) + 1; // Ajuste para 1-12
+        const novoAno = ano + Math.floor((mes - 1 + i) / 12);
+        const competencia = `${novoMes.toString().padStart(2, '0')}/${novoAno.toString().slice(-2)}`;
+        competencias.push(competencia);
+      }
+    } catch (e) {
+      console.error("Erro ao gerar competências:", e);
+    }
+    
+    return competencias;
   };
 
   // Determinar o nome do usuário
@@ -137,6 +181,59 @@ const Contabilidade = () => {
     }
   };
 
+  // Função para abrir o modal de entrega
+  const abrirModalEntrega = (empresa) => {
+    setEmpresaSelecionada(empresa);
+    const competencias = gerarProximasCompetencias(empresa.proxima_entrega);
+    setProximasCompetencias(competencias);
+    setCompetenciaSelecionada(competencias[0] || '');
+    setMostrarModalEntrega(true);
+  };
+
+  // Função para realizar a entrega
+  const realizarEntrega = () => {
+    if (!empresaSelecionada || !competenciaSelecionada) {
+      return;
+    }
+
+    setEntregaCarregando(true);
+    const accessToken = localStorage.getItem('access');
+
+    // Converter a competência para o formato de data completa (dia/mes/ano)
+    const [mes, anoAbreviado] = competenciaSelecionada.split('/');
+    const ano = `20${anoAbreviado}`; // Assumindo formato de 2 dígitos para o ano
+    const dia = empresaSelecionada.dt ? Math.floor(empresaSelecionada.dt) : 30;
+    const novaDataEntrega = `${dia.toString().padStart(2, '0')}/${mes}/${ano}`;
+
+    axios
+      .post(
+        `${process.env.REACT_APP_API_BASE}/api/registrar-entrega/`,
+        {
+          numero_dominio: empresaSelecionada.numero_dominio,
+          nova_data_entrega: novaDataEntrega
+        },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        }
+      )
+      .then(() => {
+        setMensagem(`Entrega registrada com sucesso para a competência ${competenciaSelecionada}`);
+        setMostrarModalEntrega(false);
+        setEntregaCarregando(false);
+        // Recarregar empresas após o registro da entrega
+        carregarEmpresas();
+      })
+      .catch((error) => {
+        const errorMsg =
+          error.response?.data?.erro ||
+          error.response?.data?.mensagem ||
+          error.message ||
+          'Erro desconhecido ao registrar entrega';
+        setMensagem(`Erro: ${errorMsg}`);
+        setEntregaCarregando(false);
+      });
+  };
+
   // Filtro
   const empresasFiltradas = empresas.filter((emp) => {
     return Object.entries(filtros).every(([campo, valorFiltro]) => {
@@ -197,6 +294,11 @@ const Contabilidade = () => {
         {mensagem && (
           <div className={`alert ${mensagem.includes('Erro') ? 'alert-danger' : 'alert-success'}`}>
             {mensagem}
+            <button 
+              type="button" 
+              className="btn-close float-end" 
+              onClick={() => setMensagem('')}
+            ></button>
           </div>
         )}
 
@@ -298,6 +400,21 @@ const Contabilidade = () => {
           ) : (
             <>
               <table className="table table-bordered table-hover text-center align-middle fs-6">
+                <colgroup>
+                  <col style={{ width: "40px" }} /> {/* Checkbox */}
+                  <col /> {/* Nº Domínio */}
+                  <col /> {/* Empresa */}
+                  <col /> {/* Drive Cliente */}
+                  <col /> {/* Data */}
+                  <col /> {/* Ultima Entrega */}
+                  <col /> {/* Próxima Entrega */}
+                  <col /> {/* Regime */}
+                  <col /> {/* Operador */}
+                  <col /> {/* Status Contábil */}
+                  <col /> {/* Tipo Entrega */}
+                  <col /> {/* Controle Financeiro */}
+                  <col style={{ width: "60px" }} /> {/* Ações - reduzido para 60px */}
+                </colgroup>
                 <thead className="table-light">
                   <tr>
                     <th>
@@ -466,7 +583,9 @@ const Contabilidade = () => {
                         }
                       />
                     </th>
-                    <th>Detalhes</th>
+                    <th style={{ width: "60px" }}>
+                      Ações
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -493,8 +612,9 @@ const Contabilidade = () => {
                               onClick={() =>
                                 window.open(empresa.drive_cliente, '_blank')
                               }
+                              title="Abrir Drive"
                             >
-                              Abrir
+                              <i className="fas fa-external-link-alt"></i>
                             </button>
                           </>
                         ) : (
@@ -523,13 +643,25 @@ const Contabilidade = () => {
                       </td>
                       <td>{empresa.tipo_entrega || '-'}</td>
                       <td>{empresa.controle_financeiro || '-'}</td>
-                      <td>
-                        <button 
-                          className="btn btn-sm btn-info"
-                          onClick={() => verDetalhesEmpresa(empresa)}
-                        >
-                          Ver Mais
-                        </button>
+                      <td style={{ width: "60px", padding: "2px" }}>
+                        <div style={{ display: "flex", gap: "2px", justifyContent: "center" }}>
+                          <button 
+                            className="btn btn-sm btn-info" 
+                            style={{ padding: "0.15rem 0.25rem", fontSize: "0.7rem" }}
+                            onClick={() => verDetalhesEmpresa(empresa)}
+                            title="Ver Detalhes"
+                          >
+                            <i className="fas fa-eye"></i>
+                          </button>
+                          <button 
+                            className="btn btn-sm btn-success" 
+                            style={{ padding: "0.15rem 0.25rem", fontSize: "0.7rem" }}
+                            onClick={() => abrirModalEntrega(empresa)}
+                            title="Registrar Entrega"
+                          >
+                            <i className="fas fa-check-circle"></i>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -588,6 +720,77 @@ const Contabilidade = () => {
                   onClick={() => setMostrarModalDetalhes(false)}
                 >
                   Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Entrega */}
+      {mostrarModalEntrega && empresaSelecionada && (
+        <div className="modal" tabIndex="-1" style={{display: 'block', backgroundColor: 'rgba(0,0,0,0.5)'}}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Registrar Entrega</h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => setMostrarModalEntrega(false)}
+                  disabled={entregaCarregando}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <p><strong>Empresa:</strong> {empresaSelecionada.empresa}</p>
+                  <p><strong>Última Entrega:</strong> {formatarCompetencia(empresaSelecionada.ultima_entrega)}</p>
+                  <p><strong>Próxima Entrega:</strong> {empresaSelecionada.proxima_entrega}</p>
+                </div>
+                
+                <div className="mb-3">
+                  <label className="form-label">Selecione a competência para entrega:</label>
+                  <select 
+                    className="form-select"
+                    value={competenciaSelecionada}
+                    onChange={(e) => setCompetenciaSelecionada(e.target.value)}
+                    disabled={entregaCarregando}
+                  >
+                    {proximasCompetencias.map((comp) => (
+                      <option key={comp} value={comp}>{comp}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="text-muted small">
+                  <p>
+                    Ao registrar a entrega, a data da última entrega será atualizada para a competência selecionada.
+                  </p>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setMostrarModalEntrega(false)}
+                  disabled={entregaCarregando}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary"
+                  onClick={realizarEntrega}
+                  disabled={!competenciaSelecionada || entregaCarregando}
+                >
+                  {entregaCarregando ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Processando...
+                    </>
+                  ) : (
+                    'Confirmar Entrega'
+                  )}
                 </button>
               </div>
             </div>
