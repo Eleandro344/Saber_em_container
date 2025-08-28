@@ -626,21 +626,26 @@ const Contabilidade = () => {
                       <td>{empresa.proxima_entrega || '-'}</td>
                       <td>{empresa.regime || '-'}</td>
                       <td>{empresa.operador || '-'}</td>
-                      <td>
-                        <span
-                          className={`badge ${
-                            empresa.Status_contabil === 'Concluído' || empresa.Status_contabil === 'Em Dia'
-                              ? 'bg-success'
-                              : empresa.Status_contabil === 'Pendente' || empresa.Status_contabil === 'Aguardando'
-                              ? 'bg-warning'
-                              : empresa.Status_contabil && empresa.Status_contabil.includes('Atrasado')
-                              ? 'bg-danger'
-                              : 'bg-secondary'
-                          }`}
-                        >
-                          {empresa.Status_contabil || 'Não definido'}
-                        </span>
-                      </td>
+                            <td>
+                              <span
+                                className={`badge ${
+                                  empresa.Status_contabil === 'Concluído' || empresa.Status_contabil === 'Em Dia'
+                                    ? 'bg-success'
+                                    : empresa.Status_contabil === 'Pendente' || empresa.Status_contabil === 'Aguardando'
+                                    ? 'bg-warning'
+                                    : empresa.Status_contabil && empresa.Status_contabil.includes('Atrasado')
+                                    ? 'bg-danger'
+                                    : 'bg-success'
+                                }`}
+                                style={{ 
+                                  fontSize: '0.8rem',  // Aumenta o tamanho da fonte
+                                  fontWeight: 'light',   // Deixa em negrito
+                                  padding: '0.4em 0.6em' // Aumenta o padding interno
+                                }}
+                              >
+                                {empresa.Status_contabil || 'Não definido'}
+                              </span>
+                            </td>
                       <td>{empresa.tipo_entrega || '-'}</td>
                       <td>{empresa.controle_financeiro || '-'}</td>
                       <td style={{ width: "60px", padding: "2px" }}>

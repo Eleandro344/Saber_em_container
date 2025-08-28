@@ -3055,23 +3055,17 @@ def empresas_contabil(request):
         data = []
         for _, row in df.iterrows():
             # Calcular próxima entrega (retorna tanto o objeto datetime quanto a string formatada)
-            resultado = calcular_proxima_entrega(
+            proxima_entrega_date, proxima_entrega_str = calcular_proxima_entrega(
                 row['ultima_entrega'], 
                 row['tipo_entrega'], 
                 row['dt']
             )
             
-            # Desempacota apenas se não for None
-            if resultado[0] is not None:
-                proxima_entrega_date, proxima_entrega_str = resultado
-                # Verificar se está atrasado
-                status_calculado = verificar_status_entrega(proxima_entrega_date)
-            else:
-                proxima_entrega_str = None
-                status_calculado = None
+            # Verificar status (atrasado ou dias restantes)
+            status_calculado = verificar_status_entrega(proxima_entrega_date)
             
-            # Usar o status calculado se estiver atrasado, caso contrário usar o do banco
-            status_final = status_calculado if status_calculado else row['Status_contabil']
+            # Usar o status calculado independentemente do status no banco
+            # Isso garante que sempre mostraremos o status atual correto
             
             data.append({
                 'numero_dominio': str(row['numero_dominio']) if row['numero_dominio'] is not None else None,
@@ -3082,7 +3076,7 @@ def empresas_contabil(request):
                 'proxima_entrega': proxima_entrega_str,
                 'regime': row['regime'],
                 'operador': row['operador'],
-                'Status_contabil': status_final,
+                'Status_contabil': status_calculado if status_calculado else row['Status_contabil'],
                 'tipo_entrega': row['tipo_entrega'],
                 'controle_financeiro': row['controle_financeiro']
             })
@@ -3100,7 +3094,6 @@ def empresas_contabil(request):
             'erro': 'Não foi possível carregar as empresas',
             'detalhes': str(e)
         }, status=500)
-
 # VER MAIS DETALHES DA EMPRESA
 @csrf_exempt
 def detalhes_empresa(request, numero_dominio):
@@ -3194,11 +3187,11 @@ def registrar_entrega(request):
         # Conexão com o banco
         engine = create_engine(config('DATABASE_URL'))
         
-        # Atualizar a data da última entrega e o status
+        # Atualizar a data da última entrega
         with engine.connect() as conn:
             # 1. Primeiro, buscar informações da empresa para calcular o status correto
             query_select = text("""
-            SELECT tipo_entrega, dt
+            SELECT tipo_entrega, dt, empresa, proxima_entrega
             FROM clientes_contabil
             WHERE numero_dominio = :numero_dominio
             """)
@@ -3211,20 +3204,79 @@ def registrar_entrega(request):
                 
             tipo_entrega = empresa_info[0]
             dt = empresa_info[1]
+            nome_empresa = empresa_info[2]
+            proxima_entrega = empresa_info[3]
             
-            # 2. Atualizar a última entrega e o status
-            # Como acabamos de registrar uma entrega, o status deve ser "Em Dia"
+            # 2. Calcular a próxima entrega
+            data_obj = datetime.strptime(data_formatada.split(' ')[0], '%Y-%m-%d')
+            proxima_entrega_date, _ = calcular_proxima_entrega(data_obj, tipo_entrega, dt)
+            
+            # 3. Calcular o status com dias restantes
+            status = "Em Dia"
+            if proxima_entrega_date:
+                hoje = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                dias_restantes = (proxima_entrega_date - hoje).days
+                status = f"Em Dia ({dias_restantes} dias)"
+            
+            # 4. Atualizar a última entrega e o status
             query_update = text("""
             UPDATE clientes_contabil
-            SET ultima_entrega = :nova_data, Status_contabil = 'Em Dia'
+            SET ultima_entrega = :nova_data, Status_contabil = :status
             WHERE numero_dominio = :numero_dominio
             """)
             
-            conn.execute(query_update, {'nova_data': data_formatada, 'numero_dominio': numero_dominio})
+            conn.execute(query_update, {
+                'nova_data': data_formatada, 
+                'numero_dominio': numero_dominio,
+                'status': status
+            })
+            
+            # 5. Inserir no histórico contábil usando SQL raw
+            query_historico = text("""
+            INSERT INTO historico_contabil 
+            (entregue, empresa, data_hoje, texto_livre, numero_dominio) 
+            VALUES (:entregue, :empresa, CURRENT_TIMESTAMP, :texto_livre, :numero_dominio)
+            """)
+            
+            conn.execute(query_historico, {
+                'entregue': proxima_entrega,  # Próxima entrega vira a entrega atual
+                'empresa': nome_empresa,
+                'texto_livre': f'Entrega referente ao período {proxima_entrega}',
+                'numero_dominio': numero_dominio
+            })
+            
             conn.commit()
         
-        return JsonResponse({'mensagem': 'Entrega registrada com sucesso'})
+        return JsonResponse({
+            'mensagem': 'Entrega registrada com sucesso', 
+            'competencia': proxima_entrega
+        })
     
     except Exception as e:
         print(f"Erro ao registrar entrega: {str(e)}")
-        return JsonResponse({'erro': str(e)}, status=500)
+        return JsonResponse({
+            'erro': 'Não foi possível registrar a entrega',
+            'detalhes': str(e)
+        }, status=500)
+def verificar_status_entrega(proxima_entrega_date):
+    try:
+        # Se não houver data de próxima entrega, retorna o status original
+        if proxima_entrega_date is None:
+            return None
+            
+        # Obter a data atual
+        hoje = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # Comparar a data de próxima entrega com a data atual
+        if proxima_entrega_date < hoje:
+            # Calcular dias de atraso
+            dias_atraso = (hoje - proxima_entrega_date).days
+            return f"Atrasado ({dias_atraso} dias)"
+        else:
+            # Calcular dias restantes
+            dias_restantes = (proxima_entrega_date - hoje).days
+            return f"Em Dia ({dias_restantes} dias)"
+            
+    except Exception as e:
+        print(f"Erro ao verificar status de entrega: {str(e)}")
+        return None        
