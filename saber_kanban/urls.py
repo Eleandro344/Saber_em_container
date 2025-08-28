@@ -53,6 +53,8 @@ urlpatterns = [
     path('api/detalhes-empresa/<str:numero_dominio>/', views.detalhes_empresa, name='detalhes_empresa'),
     path('api/registrar-entrega/', views.registrar_entrega, name='registrar_entrega'),    
     path('api/registrar-entrega-parcial/', views.registrar_entrega_parcial, name='registrar_entrega_parcial'),
+    path('api/historico-contabil/', views.obter_historico_contabil, name='historico_contabil'),
+
 ]
 # 
 

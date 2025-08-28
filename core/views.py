@@ -3234,15 +3234,16 @@ def registrar_entrega(request):
             # 5. Inserir no histórico contábil usando SQL raw
             query_historico = text("""
             INSERT INTO historico_contabil 
-            (entregue, empresa, data_hoje, texto_livre, numero_dominio) 
-            VALUES (:entregue, :empresa, CURRENT_TIMESTAMP, :texto_livre, :numero_dominio)
+            (entregue, empresa, data_hoje, texto_livre, numero_dominio, tipo_entrega) 
+            VALUES (:entregue, :empresa, CURRENT_TIMESTAMP, :texto_livre, :numero_dominio, :tipo_entrega)
             """)
-            
+
             conn.execute(query_historico, {
-                'entregue': proxima_entrega,  # Próxima entrega vira a entrega atual
+                'entregue': proxima_entrega,
                 'empresa': nome_empresa,
-                'texto_livre': f'Entrega referente ao período {proxima_entrega}',
-                'numero_dominio': numero_dominio
+                'texto_livre': None,  # NULL para entrega completa
+                'numero_dominio': numero_dominio,
+                'tipo_entrega': 'Completa'  # ✅ Marca como entrega completa
             })
             
             conn.commit()
@@ -3352,18 +3353,19 @@ def registrar_entrega_parcial(request):
                 'status': status
             })
             
-            # 5. Inserir no histórico contábil usando SQL raw
+            # 5. Inserir no histórico contábil com tipo_entrega = 'Parcial'
             query_historico = text("""
             INSERT INTO historico_contabil 
-            (entregue, empresa, data_hoje, texto_livre, numero_dominio) 
-            VALUES (:entregue, :empresa, CURRENT_TIMESTAMP, :texto_livre, :numero_dominio)
+            (entregue, empresa, data_hoje, texto_livre, numero_dominio, tipo_entrega) 
+            VALUES (:entregue, :empresa, CURRENT_TIMESTAMP, :texto_livre, :numero_dominio, :tipo_entrega)
             """)
             
             conn.execute(query_historico, {
                 'entregue': proxima_entrega,  # Próxima entrega vira a entrega atual
                 'empresa': nome_empresa,
                 'texto_livre': texto_entrega_parcial,  # Adiciona o texto da entrega parcial
-                'numero_dominio': numero_dominio
+                'numero_dominio': numero_dominio,
+                'tipo_entrega': 'Parcial'  # ✅ Marca como entrega parcial
             })
             
             conn.commit()
@@ -3378,4 +3380,48 @@ def registrar_entrega_parcial(request):
         return JsonResponse({
             'erro': 'Não foi possível registrar a entrega parcial',
             'detalhes': str(e)
-        }, status=500)    
+        }, status=500)
+@csrf_exempt
+def obter_historico_contabil(request):
+    if request.method != 'GET':
+        return JsonResponse({'erro': 'Método não permitido'}, status=405)
+    
+    try:
+        # Conexão com o banco
+        engine = create_engine(config('DATABASE_URL'))
+        
+        # Query incluindo a nova coluna tipo_entrega
+        with engine.connect() as conn:
+            query = text("""
+            SELECT entregue, empresa, data_hoje, texto_livre, numero_dominio, tipo_entrega
+            FROM historico_contabil
+            ORDER BY data_hoje DESC
+            LIMIT 1000
+            """)
+            
+            result = conn.execute(query)
+            historico = []
+            
+            # Usar enumerate para criar um id único para cada registro
+            for index, row in enumerate(result, 1):
+                historico.append({
+                    'id': index,  # ID gerado artificialmente
+                    'entregue': row[0],
+                    'empresa': row[1],
+                    'data_hoje': row[2].strftime('%d/%m/%Y %H:%M:%S') if row[2] else '',
+                    'texto_livre': row[3] or '',
+                    'numero_dominio': row[4],
+                    'tipo_entrega': row[5] or 'Completa'  # ✅ Inclui o tipo de entrega
+                })
+        
+        return JsonResponse({
+            'historico': historico,
+            'total': len(historico)
+        })
+    
+    except Exception as e:
+        print(f"Erro ao buscar histórico contábil: {str(e)}")
+        return JsonResponse({
+            'erro': 'Não foi possível buscar o histórico',
+            'detalhes': str(e)
+        }, status=500)

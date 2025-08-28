@@ -22,6 +22,12 @@ const Contabilidade = () => {
   const [competenciaSelecionada, setCompetenciaSelecionada] = useState('');
   const [proximasCompetencias, setProximasCompetencias] = useState([]);
   const [entregaCarregando, setEntregaCarregando] = useState(false);
+  
+  // Estados para o histórico
+  const [mostrarModalHistorico, setMostrarModalHistorico] = useState(false);
+  const [historicoEntregas, setHistoricoEntregas] = useState([]);
+  const [historicoCarregando, setHistoricoCarregando] = useState(false);
+  const [filtroHistorico, setFiltroHistorico] = useState('');
 
   // Função para normalizar o status (extrair apenas a primeira palavra)
   const normalizarStatus = (status) => {
@@ -59,6 +65,31 @@ const Contabilidade = () => {
       console.error("Erro ao formatar data:", e);
       return dataString;
     }
+  };
+
+  // Função para carregar histórico de entregas
+  const carregarHistorico = () => {
+    setHistoricoCarregando(true);
+    const accessToken = localStorage.getItem('access');
+
+    axios
+      .get(`${process.env.REACT_APP_API_BASE}/api/historico-contabil/`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      })
+      .then((res) => {
+        setHistoricoEntregas(res.data.historico || []);
+        setHistoricoCarregando(false);
+        setMostrarModalHistorico(true);
+      })
+      .catch((error) => {
+        const errorMsg =
+          error.response?.data?.erro ||
+          error.response?.data?.mensagem ||
+          error.message ||
+          'Erro desconhecido ao carregar histórico';
+        setMensagem(`Erro: ${errorMsg}`);
+        setHistoricoCarregando(false);
+      });
   };
 
   // Função para realizar entrega parcial
@@ -290,6 +321,20 @@ const Contabilidade = () => {
     });
   });
 
+// Filtro para o histórico - atualize esta parte no seu código
+const historicoFiltrado = historicoEntregas.filter((item) => {
+  if (!filtroHistorico) return true;
+  
+  const filtroLower = filtroHistorico.toLowerCase();
+  return (
+    item.empresa.toLowerCase().includes(filtroLower) ||
+    item.entregue.toLowerCase().includes(filtroLower) ||
+    item.numero_dominio.toString().includes(filtroLower) ||
+    (item.texto_livre && item.texto_livre.toLowerCase().includes(filtroLower)) ||
+    (item.tipo_entrega && item.tipo_entrega.toLowerCase().includes(filtroLower)) // ✅ Filtro por tipo
+  );
+});
+
   // ✅ Dados para o gráfico (agrupa por Status_contabil normalizado)
   const desempenhoOperador = React.useMemo(() => {
     if (!filtros.operador) return [];
@@ -347,22 +392,50 @@ const Contabilidade = () => {
           </div>
         )}
 
-        {/* Filtro do Operador */}
-        <div className="mb-3">
-          <label className="form-label fw-bold">Operador</label>
-          <select
-            className="form-select"
-            style={{ maxWidth: '300px' }}
-            value={filtros.operador}
-            onChange={(e) => setFiltros(prev => ({ ...prev, operador: e.target.value }))}
-          >
-            <option value="">Todos Operadores</option>
-            {operadoresUnicos.map((operador) => (
-              <option key={operador} value={operador}>
-                {operador}
-              </option>
-            ))}
-          </select>
+        {/* Filtro do Operador e Botão Histórico */}
+        <div className="row mb-3">
+          <div className="col-md-6">
+            <label className="form-label fw-bold">Operador</label>
+            <select
+              className="form-select"
+              value={filtros.operador}
+              onChange={(e) => setFiltros(prev => ({ ...prev, operador: e.target.value }))}
+            >
+              <option value="">Todos Operadores</option>
+              {operadoresUnicos.map((operador) => (
+                <option key={operador} value={operador}>
+                  {operador}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="col-md-6 d-flex align-items-end">
+<button
+  className="btn btn-primary px-4 py-2 rounded-pill shadow-sm d-flex align-items-center"
+  onClick={carregarHistorico}
+  disabled={historicoCarregando}
+  style={{
+    fontWeight: "500",
+    transition: "all 0.3s ease",
+  }}
+>
+  {historicoCarregando ? (
+    <>
+      <span
+        className="spinner-border spinner-border-sm me-2 text-light"
+        role="status"
+        aria-hidden="true"
+      ></span>
+      <span className="text-light">Carregando...</span>
+    </>
+  ) : (
+    <>
+      <i className="fas fa-history me-2"></i>
+      Ver Histórico de Entregas
+    </>
+  )}
+</button>
+          </div>
         </div>
 
         {/* ✅ GRÁFICO DE DESEMPENHO SEMPRE VISÍVEL */}
@@ -776,6 +849,133 @@ const Contabilidade = () => {
           </div>
         </div>
       )}
+
+{/* Modal de Histórico */}
+{mostrarModalHistorico && (
+  <div className="modal" tabIndex="-1" style={{display: 'block', backgroundColor: 'rgba(0,0,0,0.5)'}}>
+    <div className="modal-dialog" style={{ maxWidth: '95vw', width: '95vw' }}>
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">
+            <i className="fas fa-history me-2"></i>
+            Histórico de Entregas
+          </h5>
+          <button 
+            type="button" 
+            className="btn-close" 
+            onClick={() => {
+              setMostrarModalHistorico(false);
+              setFiltroHistorico('');
+            }}
+          ></button>
+        </div>
+        <div className="modal-body">
+          {/* Campo de filtro do histórico */}
+          <div className="mb-3">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Filtrar por empresa, competência, domínio, tipo ou observação..."
+              value={filtroHistorico}
+              onChange={(e) => setFiltroHistorico(e.target.value)}
+            />
+          </div>
+
+          <div className="table-responsive" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+            <table className="table table-striped table-hover">
+              <thead className="table-dark sticky-top">
+                <tr>
+                  <th style={{ minWidth: '160px' }}>Data/Hora</th>
+                  <th style={{ minWidth: '280px' }}>Empresa</th>
+                  <th style={{ minWidth: '110px' }}>Competência</th>
+                  <th style={{ minWidth: '100px' }}>Nº Domínio</th>
+                  <th style={{ minWidth: '100px' }}>Tipo</th>
+                  <th style={{ minWidth: '300px' }}>Observação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historicoFiltrado.length > 0 ? (
+                  historicoFiltrado.map((item) => (
+                    <tr key={item.id}>
+                      <td style={{ minWidth: '160px', fontSize: '0.85rem' }}>{item.data_hoje}</td>
+                      <td style={{ minWidth: '280px', fontSize: '0.9rem' }} className="fw-semibold">{item.empresa}</td>
+                      <td style={{ minWidth: '110px', fontSize: '0.9rem' }} className="text-center">
+                        <span className="badge bg-primary">{item.entregue}</span>
+                      </td>
+                      <td style={{ minWidth: '100px', fontSize: '0.9rem' }} className="text-center">{item.numero_dominio}</td>
+                      <td style={{ minWidth: '100px', fontSize: '0.9rem' }} className="text-center">
+                        <span 
+                          className={`badge ${
+                            item.tipo_entrega === 'Parcial' 
+                              ? 'bg-warning text-dark' 
+                              : 'bg-success'
+                          }`}
+                        >
+                          {item.tipo_entrega || 'Completa'}
+                        </span>
+                      </td>
+                      <td style={{ minWidth: '300px', fontSize: '0.9rem' }}>
+                        {item.texto_livre ? (
+                          <div className="text-info">
+                            <i className="fas fa-comment-dots me-2"></i>
+                            <span className="fst-italic">{item.texto_livre}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted">
+                            <i className="fas fa-minus me-2"></i>
+                            Sem observações
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="text-center text-muted py-4">
+                      {filtroHistorico ? 'Nenhum registro encontrado com esse filtro.' : 'Nenhum histórico disponível.'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-3 d-flex justify-content-between align-items-center">
+            <small className="text-muted">
+              Total de registros: <strong>{historicoFiltrado.length}</strong>
+            </small>
+            <div className="d-flex gap-3">
+              <small className="text-muted">
+                <span className="badge bg-success me-1"></span>
+                Completa
+              </small>
+              <small className="text-muted">
+                <span className="badge bg-warning text-dark me-1"></span>
+                Parcial
+              </small>
+            </div>
+            <small className="text-muted">
+              Últimos 1000 registros ordenados por data mais recente
+            </small>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button 
+            type="button" 
+            className="btn btn-secondary" 
+            onClick={() => {
+              setMostrarModalHistorico(false);
+              setFiltroHistorico('');
+            }}
+          >
+            <i className="fas fa-times me-2"></i>
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Modal de Entrega */}
       {mostrarModalEntrega && empresaSelecionada && (
