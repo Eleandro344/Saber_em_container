@@ -2978,13 +2978,13 @@ def calcular_proxima_entrega(ultima_entrega_str, tipo_entrega, data_dia=None):
         
         # Calcula a próxima entrega com base no tipo
         if tipo_entrega.lower() == 'mensal':
-            proxima_entrega = ultima_entrega + relativedelta(months=1)
+            proxima_entrega = ultima_entrega + relativedelta(months=2)
         elif tipo_entrega.lower() == 'quarter':
-            proxima_entrega = ultima_entrega + relativedelta(months=3)
+            proxima_entrega = ultima_entrega + relativedelta(months=4)
         elif tipo_entrega.lower() == 'semestral':
-            proxima_entrega = ultima_entrega + relativedelta(months=6)            
+            proxima_entrega = ultima_entrega + relativedelta(months=7)            
         elif tipo_entrega.lower() == 'anual':
-            proxima_entrega = ultima_entrega + relativedelta(years=1)
+            proxima_entrega = ultima_entrega + relativedelta(years=1) + relativedelta(months=1)
         else:
             # Se o tipo não for reconhecido, mantém a mesma data
             proxima_entrega = ultima_entrega
@@ -3675,3 +3675,6 @@ def registrar_entrega_atrasada(request):
             'erro': 'Não foi possível registrar a entrega atrasada',
             'detalhes': str(e)
         }, status=500)    
+
+
+        

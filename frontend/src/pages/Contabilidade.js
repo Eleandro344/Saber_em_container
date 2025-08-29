@@ -40,6 +40,28 @@ const Contabilidade = () => {
   const [mostrarModalEntregaAtrasada, setMostrarModalEntregaAtrasada] = useState(false);
   const [textoEntregaAtrasada, setTextoEntregaAtrasada] = useState('');
 
+  // Função para converter data para formato comparável
+  const converterDataParaComparacao = (dataString) => {
+    if (!dataString || dataString === '-') return new Date('1900-01-01');
+    
+    try {
+      // Para formato DD/MM/YYYY
+      if (dataString.includes('/')) {
+        const [dia, mes, ano] = dataString.split('/');
+        return new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+      }
+      
+      // Para formato ISO
+      if (dataString.includes('-')) {
+        return new Date(dataString);
+      }
+      
+      return new Date('1900-01-01');
+    } catch (e) {
+      return new Date('1900-01-01');
+    }
+  };
+
   // Função para normalizar o status (extrair apenas a primeira palavra)
   const normalizarStatus = (status) => {
     if (!status) return "Não definido";
@@ -194,30 +216,48 @@ const Contabilidade = () => {
       });
   };
 
-  // Função para gerar próximas competências (12 meses a partir da próxima entrega)
-  const gerarProximasCompetencias = (dataProximaEntrega) => {
+  // Função ATUALIZADA para gerar próximas competências (12 meses a partir da última entrega)
+  const gerarProximasCompetencias = (ultimaEntrega) => {
     const competencias = [];
     
     try {
-      if (!dataProximaEntrega) return competencias;
+      if (!ultimaEntrega) return competencias;
       
-      // Extrair o mês e ano da próxima entrega
+      // Extrair o mês e ano da última entrega
       let mes, ano;
       
-      // Formato "30/02/2025"
-      if (dataProximaEntrega.includes('/')) {
-        const partes = dataProximaEntrega.split('/');
-        if (partes.length === 3) {
-          mes = parseInt(partes[1]);
-          ano = parseInt(partes[2]);
-        } else {
-          return competencias;
-        }
-      } else {
+      // Para formato "09/25" (MM/YY)
+      if (ultimaEntrega.includes('/') && ultimaEntrega.length === 5) {
+        const [mesStr, anoStr] = ultimaEntrega.split('/');
+        mes = parseInt(mesStr);
+        ano = parseInt("20" + anoStr); // Converte "25" para 2025
+      }
+      // Para formato ISO "2025-09-30 00:00:00"
+      else if (ultimaEntrega.includes('-')) {
+        const [dataPart] = ultimaEntrega.split(' ');
+        const [anoStr, mesStr] = dataPart.split('-');
+        mes = parseInt(mesStr);
+        ano = parseInt(anoStr);
+      }
+      // Para formato "30/09/2025 00:00"
+      else if (ultimaEntrega.includes('/') && ultimaEntrega.includes(' ')) {
+        const [dataPart] = ultimaEntrega.split(' ');
+        const [dia, mesStr, anoStr] = dataPart.split('/');
+        mes = parseInt(mesStr);
+        ano = parseInt(anoStr);
+      }
+      else {
         return competencias;
       }
       
-      // Gerar 12 competências a partir da próxima entrega
+      // Avançar para o próximo mês após a última entrega
+      mes = mes + 1;
+      if (mes > 12) {
+        mes = 1;
+        ano += 1;
+      }
+      
+      // Gerar 12 competências a partir do mês seguinte à última entrega
       for (let i = 0; i < 12; i++) {
         const novoMes = ((mes - 1 + i) % 12) + 1; // Ajuste para 1-12
         const novoAno = ano + Math.floor((mes - 1 + i) / 12);
@@ -256,7 +296,6 @@ const Contabilidade = () => {
     numero_dominio: '',
     empresa: '',
     drive_cliente: '',
-    dt: '',
     ultima_entrega: '',
     proxima_entrega: '',
     regime: '',
@@ -279,6 +318,12 @@ const Contabilidade = () => {
       })
       .then((res) => {
         const empresasCarregadas = res.data.empresas || [];
+        // Converter dt para inteiro
+        empresasCarregadas.forEach(emp => {
+          if (emp.dt) {
+            emp.dt = parseInt(emp.dt, 10);
+          }
+        });
         const operadoresUnicos = [...new Set(empresasCarregadas.map(emp => emp.operador).filter(Boolean))].sort();
         setOperadoresUnicos(operadoresUnicos);
         setEmpresas(empresasCarregadas);
@@ -315,10 +360,19 @@ const Contabilidade = () => {
     }
   };
 
-  // FUNÇÃO ATUALIZADA PARA ABRIR MODAL DE ENTREGA (COM VERIFICAÇÃO DE ATRASO)
+  // FUNÇÃO ATUALIZADA PARA ABRIR MODAL DE ENTREGA
   const abrirModalEntrega = (empresa) => {
     setEmpresaSelecionada(empresa);
-    const competencias = gerarProximasCompetencias(empresa.proxima_entrega);
+    
+    // Usar a última entrega em vez da próxima entrega
+    let ultimaEntregaFormatada = '';
+    
+    // Se tivermos a última entrega, formatamos para MM/YY
+    if (empresa.ultima_entrega) {
+      ultimaEntregaFormatada = formatarCompetencia(empresa.ultima_entrega);
+    }
+    
+    const competencias = gerarProximasCompetencias(ultimaEntregaFormatada);
     setProximasCompetencias(competencias);
     setCompetenciaSelecionada(competencias[0] || '');
     
@@ -378,14 +432,21 @@ const Contabilidade = () => {
       });
   };
 
-  // Filtro
-  const empresasFiltradas = empresas.filter((emp) => {
-    return Object.entries(filtros).every(([campo, valorFiltro]) => {
-      if (!valorFiltro) return true;
-      const valorEmpresa = emp[campo] ? emp[campo].toString().toLowerCase() : '';
-      return valorEmpresa.includes(valorFiltro.toLowerCase());
+  // Filtro e ordenação
+  const empresasFiltradas = empresas
+    .filter((emp) => {
+      return Object.entries(filtros).every(([campo, valorFiltro]) => {
+        if (!valorFiltro) return true;
+        const valorEmpresa = emp[campo] ? emp[campo].toString().toLowerCase() : '';
+        return valorEmpresa.includes(valorFiltro.toLowerCase());
+      });
+    })
+    .sort((a, b) => {
+      // Ordenar pela próxima entrega (menor para maior)
+      const dataA = converterDataParaComparacao(a.proxima_entrega);
+      const dataB = converterDataParaComparacao(b.proxima_entrega);
+      return dataA - dataB;
     });
-  });
 
   // Filtro para o histórico
   const historicoFiltrado = historicoEntregas.filter((item) => {
@@ -750,7 +811,6 @@ const Contabilidade = () => {
                   <col /> {/* Nº Domínio */}
                   <col /> {/* Empresa */}
                   <col /> {/* Drive Cliente */}
-                  <col /> {/* Data */}
                   <col /> {/* Ultima Entrega */}
                   <col /> {/* Próxima Entrega */}
                   <col /> {/* Regime */}
@@ -758,7 +818,7 @@ const Contabilidade = () => {
                   <col /> {/* Status Contábil */}
                   <col /> {/* Tipo Entrega */}
                   <col /> {/* Controle Financeiro */}
-                  <col style={{ width: "60px" }} /> {/* Ações - reduzido para 60px */}
+                  <col style={{ width: "60px" }} /> {/* Ações */}
                 </colgroup>
                 <thead className="table-light">
                   <tr>
@@ -818,18 +878,6 @@ const Contabilidade = () => {
                       />
                     </th>
                     <th>
-                      Data
-                      <input
-                        type="text"
-                        className="form-control form-control-sm mt-1"
-                        placeholder="Filtrar..."
-                        value={filtros.dt}
-                        onChange={(e) =>
-                          setFiltros((prev) => ({ ...prev, dt: e.target.value }))
-                        }
-                      />
-                    </th>
-                    <th>
                       Ultima Entrega
                       <input
                         type="text"
@@ -842,7 +890,10 @@ const Contabilidade = () => {
                       />
                     </th>
                     <th>
-                      Próxima Entrega
+                      <div className="d-flex align-items-center justify-content-center">
+                        Próxima Entrega
+                        <i className="fas fa-sort-amount-down ms-2 text-primary" title="Ordenado do menor para o maior"></i>
+                      </div>
                       <input
                         type="text"
                         className="form-control form-control-sm mt-1"
@@ -966,7 +1017,6 @@ const Contabilidade = () => {
                           '-'
                         )}
                       </td>
-                      <td>{empresa.dt || '-'}</td>
                       <td>{empresa.ultima_entrega ? formatarCompetencia(empresa.ultima_entrega) : '-'}</td>
                       <td>{empresa.proxima_entrega || '-'}</td>
                       <td>{empresa.regime || '-'}</td>
