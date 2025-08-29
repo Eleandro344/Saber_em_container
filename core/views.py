@@ -3575,3 +3575,103 @@ def atualizar_empresa(request, numero_dominio):
             'erro': 'Não foi possível atualizar os dados da empresa',
             'detalhes': str(e)
         }, status=500)        
+    
+@csrf_exempt
+def registrar_entrega_atrasada(request):
+    if request.method != 'POST':
+        return JsonResponse({'erro': 'Método não permitido'}, status=405)
+    
+    try:
+        # Decodificar o corpo da requisição
+        body = json.loads(request.body.decode('utf-8'))
+        numero_dominio = body.get('numero_dominio')
+        nova_data_entrega = body.get('nova_data_entrega')
+        texto_entrega_atrasada = body.get('texto_entrega_atrasada')
+        
+        if not numero_dominio or not nova_data_entrega or not texto_entrega_atrasada:
+            return JsonResponse({'erro': 'Parâmetros incompletos'}, status=400)
+        
+        # Converter a nova data para o formato do banco de dados
+        try:
+            # Assumindo que a data vem no formato DD/MM/YYYY
+            dia, mes, ano = nova_data_entrega.split('/')
+            # Formatar para YYYY-MM-DD 00:00:00
+            data_formatada = f"{ano}-{mes}-{dia} 00:00:00"
+        except Exception as e:
+            return JsonResponse({'erro': f'Formato de data inválido: {str(e)}'}, status=400)
+        
+        # Conexão com o banco
+        engine = create_engine(config('DATABASE_URL'))
+        
+        # Atualizar a data da última entrega
+        with engine.connect() as conn:
+            # 1. Primeiro, buscar informações da empresa para calcular o status correto
+            query_select = text("""
+            SELECT tipo_entrega, dt, empresa, proxima_entrega
+            FROM clientes_contabil
+            WHERE numero_dominio = :numero_dominio
+            """)
+            
+            result = conn.execute(query_select, {'numero_dominio': numero_dominio})
+            empresa_info = result.fetchone()
+            
+            if not empresa_info:
+                return JsonResponse({'erro': 'Empresa não encontrada'}, status=404)
+                
+            tipo_entrega = empresa_info[0]
+            dt = empresa_info[1]
+            nome_empresa = empresa_info[2]
+            proxima_entrega = empresa_info[3]
+            
+            # 2. Calcular a próxima entrega
+            data_obj = datetime.strptime(data_formatada.split(' ')[0], '%Y-%m-%d')
+            proxima_entrega_date, _ = calcular_proxima_entrega(data_obj, tipo_entrega, dt)
+            
+            # 3. Calcular o status com dias restantes
+            status = "Em Dia"
+            if proxima_entrega_date:
+                hoje = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                dias_restantes = (proxima_entrega_date - hoje).days
+                status = f"Em Dia ({dias_restantes} dias)"
+            
+            # 4. Atualizar a última entrega e o status
+            query_update = text("""
+            UPDATE clientes_contabil
+            SET ultima_entrega = :nova_data, Status_contabil = :status
+            WHERE numero_dominio = :numero_dominio
+            """)
+            
+            conn.execute(query_update, {
+                'nova_data': data_formatada, 
+                'numero_dominio': numero_dominio,
+                'status': status
+            })
+            
+            # 5. Inserir no histórico contábil com tipo_entrega = 'Atrasada'
+            query_historico = text("""
+            INSERT INTO historico_contabil 
+            (entregue, empresa, data_hoje, texto_livre, numero_dominio, tipo_entrega) 
+            VALUES (:entregue, :empresa, CURRENT_TIMESTAMP, :texto_livre, :numero_dominio, :tipo_entrega)
+            """)
+            
+            conn.execute(query_historico, {
+                'entregue': proxima_entrega,  # Próxima entrega vira a entrega atual
+                'empresa': nome_empresa,
+                'texto_livre': texto_entrega_atrasada,  # Adiciona o texto da entrega atrasada
+                'numero_dominio': numero_dominio,
+                'tipo_entrega': 'Atrasada'  # ✅ Marca como entrega atrasada
+            })
+            
+            conn.commit()
+        
+        return JsonResponse({
+            'mensagem': 'Entrega atrasada registrada com sucesso', 
+            'competencia': proxima_entrega
+        })
+    
+    except Exception as e:
+        print(f"Erro ao registrar entrega atrasada: {str(e)}")
+        return JsonResponse({
+            'erro': 'Não foi possível registrar a entrega atrasada',
+            'detalhes': str(e)
+        }, status=500)    

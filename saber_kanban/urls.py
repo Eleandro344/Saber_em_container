@@ -57,7 +57,7 @@ urlpatterns = [
     path('api/textos-livres-contabil/', views.obter_textos_livres_contabil, name='textos_livres_contabil'),
     path('api/salvar-texto-livre-contabil/', views.salvar_texto_livre_contabil, name='salvar_texto_livre_contabil'),
     path('api/atualizar-empresa/<str:numero_dominio>/',views.atualizar_empresa, name='atualizar-empresa'),
-
+    path('api/registrar-entrega-atrasada/', views.registrar_entrega_atrasada, name='registrar_entrega_atrasada'),
 ]
 # 
 

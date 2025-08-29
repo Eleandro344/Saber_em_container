@@ -22,6 +22,7 @@ const Contabilidade = () => {
   const [mostrarModalDetalhes, setMostrarModalDetalhes] = useState(false);
   const [mostrarModalEntregaParcial, setMostrarModalEntregaParcial] = useState(false);
   const [textoEntregaParcial, setTextoEntregaParcial] = useState('');
+  
   // Estado para o modal de entrega
   const [mostrarModalEntrega, setMostrarModalEntrega] = useState(false);
   const [empresaSelecionada, setEmpresaSelecionada] = useState(null);
@@ -34,6 +35,10 @@ const Contabilidade = () => {
   const [historicoEntregas, setHistoricoEntregas] = useState([]);
   const [historicoCarregando, setHistoricoCarregando] = useState(false);
   const [filtroHistorico, setFiltroHistorico] = useState('');
+
+  // NOVOS ESTADOS PARA ENTREGA ATRASADA
+  const [mostrarModalEntregaAtrasada, setMostrarModalEntregaAtrasada] = useState(false);
+  const [textoEntregaAtrasada, setTextoEntregaAtrasada] = useState('');
 
   // Função para normalizar o status (extrair apenas a primeira palavra)
   const normalizarStatus = (status) => {
@@ -139,6 +144,51 @@ const Contabilidade = () => {
           error.response?.data?.mensagem ||
           error.message ||
           'Erro desconhecido ao registrar entrega parcial';
+        setMensagem(`Erro: ${errorMsg}`);
+        setEntregaCarregando(false);
+      });
+  };
+
+  // NOVA FUNÇÃO PARA REALIZAR ENTREGA ATRASADA
+  const realizarEntregaAtrasada = () => {
+    if (!empresaSelecionada || !competenciaSelecionada || !textoEntregaAtrasada.trim()) {
+      setMensagem('Por favor, preencha o campo de observação para a entrega atrasada.');
+      return;
+    }
+
+    setEntregaCarregando(true);
+    const accessToken = localStorage.getItem('access');
+
+    const [mes, anoAbreviado] = competenciaSelecionada.split('/');
+    const ano = `20${anoAbreviado}`;
+    const dia = empresaSelecionada.dt ? Math.floor(empresaSelecionada.dt) : 30;
+    const novaDataEntrega = `${dia.toString().padStart(2, '0')}/${mes}/${ano}`;
+
+    axios
+      .post(
+        `${process.env.REACT_APP_API_BASE}/api/registrar-entrega-atrasada/`,
+        {
+          numero_dominio: empresaSelecionada.numero_dominio,
+          nova_data_entrega: novaDataEntrega,
+          texto_entrega_atrasada: textoEntregaAtrasada.trim()
+        },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        }
+      )
+      .then(() => {
+        setMensagem(`Entrega atrasada registrada com sucesso para a competência ${competenciaSelecionada}`);
+        setMostrarModalEntregaAtrasada(false);
+        setEntregaCarregando(false);
+        setTextoEntregaAtrasada('');
+        carregarEmpresas();
+      })
+      .catch((error) => {
+        const errorMsg =
+          error.response?.data?.erro ||
+          error.response?.data?.mensagem ||
+          error.message ||
+          'Erro desconhecido ao registrar entrega atrasada';
         setMensagem(`Erro: ${errorMsg}`);
         setEntregaCarregando(false);
       });
@@ -265,13 +315,23 @@ const Contabilidade = () => {
     }
   };
 
-  // Função para abrir o modal de entrega
+  // FUNÇÃO ATUALIZADA PARA ABRIR MODAL DE ENTREGA (COM VERIFICAÇÃO DE ATRASO)
   const abrirModalEntrega = (empresa) => {
     setEmpresaSelecionada(empresa);
     const competencias = gerarProximasCompetencias(empresa.proxima_entrega);
     setProximasCompetencias(competencias);
     setCompetenciaSelecionada(competencias[0] || '');
-    setMostrarModalEntrega(true);
+    
+    // Verificar se a empresa está atrasada
+    const estaAtrasada = empresa.Status_contabil && empresa.Status_contabil.toLowerCase().includes('atrasado');
+    
+    if (estaAtrasada) {
+      // Se estiver atrasada, abrir modal específico para entrega atrasada
+      setMostrarModalEntregaAtrasada(true);
+    } else {
+      // Se não estiver atrasada, abrir modal normal
+      setMostrarModalEntrega(true);
+    }
   };
 
   // Função para realizar a entrega
@@ -1155,7 +1215,7 @@ const Contabilidade = () => {
         </div>
       )}
 
-      {/* Modal de Histórico */}
+      {/* Modal de Histórico ATUALIZADO */}
       {mostrarModalHistorico && (
         <div className="modal" tabIndex="-1" style={{display: 'block', backgroundColor: 'rgba(0,0,0,0.5)'}}>
           <div className="modal-dialog" style={{ maxWidth: '95vw', width: '95vw' }}>
@@ -1213,6 +1273,8 @@ const Contabilidade = () => {
                                 className={`badge ${
                                   item.tipo_entrega === 'Parcial' 
                                     ? 'bg-warning text-dark' 
+                                    : item.tipo_entrega === 'Atrasada'
+                                    ? 'bg-danger'
                                     : 'bg-success'
                                 }`}
                               >
@@ -1221,9 +1283,15 @@ const Contabilidade = () => {
                             </td>
                             <td style={{ minWidth: '300px', fontSize: '0.9rem' }}>
                               {item.texto_livre ? (
-                                <div className="text-info">
-                                  <i className="fas fa-comment-dots me-2"></i>
+                                <div className={`${item.tipo_entrega === 'Atrasada' ? 'text-danger' : 'text-info'}`}>
+                                  <i className={`fas ${item.tipo_entrega === 'Atrasada' ? 'fa-exclamation-triangle' : 'fa-comment-dots'} me-2`}></i>
                                   <span className="fst-italic">{item.texto_livre}</span>
+                                  {item.tipo_entrega === 'Atrasada' && (
+                                    <small className="d-block text-muted mt-1">
+                                      <i className="fas fa-clock me-1"></i>
+                                      Motivo do atraso
+                                    </small>
+                                  )}
                                 </div>
                               ) : (
                                 <span className="text-muted">
@@ -1257,6 +1325,10 @@ const Contabilidade = () => {
                     <small className="text-muted">
                       <span className="badge bg-warning text-dark me-1"></span>
                       Parcial
+                    </small>
+                    <small className="text-muted">
+                      <span className="badge bg-danger me-1"></span>
+                      Atrasada
                     </small>
                   </div>
                   <small className="text-muted">
@@ -1357,6 +1429,107 @@ const Contabilidade = () => {
                     )}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NOVO Modal de Entrega Atrasada */}
+      {mostrarModalEntregaAtrasada && empresaSelecionada && (
+        <div className="modal" tabIndex="-1" style={{display: 'block', backgroundColor: 'rgba(0,0,0,0.5)'}}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header bg-warning">
+                <h5 className="modal-title">
+                  <i className="fas fa-exclamation-triangle me-2"></i>
+                  Entrega em Atraso
+                </h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => {
+                    setMostrarModalEntregaAtrasada(false);
+                    setTextoEntregaAtrasada('');
+                  }}
+                  disabled={entregaCarregando}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="alert alert-warning">
+                  <i className="fas fa-exclamation-circle me-2"></i>
+                  <strong>Atenção:</strong> Esta empresa está com entrega em atraso. 
+                  É obrigatório informar o motivo do atraso.
+                </div>
+                
+                <div className="mb-3">
+                  <p><strong>Empresa:</strong> {empresaSelecionada.empresa}</p>
+                  <p><strong>Status:</strong> 
+                    <span className="badge bg-danger ms-2">{empresaSelecionada.Status_contabil}</span>
+                  </p>
+                  <p><strong>Próxima Entrega:</strong> {empresaSelecionada.proxima_entrega}</p>
+                </div>
+                
+                <div className="mb-3">
+                  <label className="form-label">Selecione a competência para entrega:</label>
+                  <select 
+                    className="form-select"
+                    value={competenciaSelecionada}
+                    onChange={(e) => setCompetenciaSelecionada(e.target.value)}
+                    disabled={entregaCarregando}
+                  >
+                    {proximasCompetencias.map((comp) => (
+                      <option key={comp} value={comp}>{comp}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="mb-3">
+                  <label className="form-label">
+                    <strong>Motivo do Atraso:</strong>
+                    <span className="text-danger">*</span>
+                  </label>
+                  <textarea 
+                    className="form-control"
+                    rows="4"
+                    placeholder="Descreva o motivo do atraso na entrega (ex: documentos em atraso do cliente, problemas técnicos, etc.)"
+                    value={textoEntregaAtrasada}
+                    onChange={(e) => setTextoEntregaAtrasada(e.target.value)}
+                    disabled={entregaCarregando}
+                    maxLength="500"
+                  />
+                  <small className="text-muted">
+                    {textoEntregaAtrasada.length}/500 caracteres
+                  </small>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => {
+                    setMostrarModalEntregaAtrasada(false);
+                    setTextoEntregaAtrasada('');
+                  }}
+                  disabled={entregaCarregando}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-warning"
+                  onClick={realizarEntregaAtrasada}
+                  disabled={!textoEntregaAtrasada.trim() || entregaCarregando}
+                >
+                  {entregaCarregando ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Processando...
+                    </>
+                  ) : (
+                    'Confirmar Entrega Atrasada'
+                  )}
+                </button>
               </div>
             </div>
           </div>
