@@ -1,0 +1,512 @@
+.cadastrar-cliente-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #f3f2f5 100%);
+  padding: 2rem 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.cadastrar-cliente-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.cadastrar-cliente-form-container {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+  padding: 3rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Header Styles */
+.cadastrar-cliente-form-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 2px solid #f8f9fa;
+}
+
+.cadastrar-cliente-btn-back {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  border: none;
+  background: linear-gradient(135deg, #c5dfd7, #a287bd);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.cadastrar-cliente-btn-back:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(86, 86, 150, 0.4);
+}
+
+.cadastrar-cliente-header-content {
+  flex: 1;
+}
+
+.cadastrar-cliente-form-title {
+  font-size: 2.2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #575d7a, #665f6b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.cadastrar-cliente-form-subtitle {
+  color: #6c757d;
+  font-size: 1.1rem;
+  margin: 0.5rem 0 0 0;
+  font-weight: 400;
+}
+
+/* Progress Bar */
+.cadastrar-cliente-progress-container {
+  margin-bottom: 3rem;
+}
+
+.cadastrar-cliente-progress-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.cadastrar-cliente-progress-step-container {
+  display: flex;
+  align-items: center;
+}
+
+.cadastrar-cliente-progress-step {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  border: 3px solid #e9ecef;
+  background: white;
+  color: #6c757d;
+  position: relative;
+  z-index: 2;
+}
+
+.cadastrar-cliente-progress-step.active {
+  border-color: #667eea;
+  background: #667eea;
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.cadastrar-cliente-progress-step.completed {
+  border-color: #28a745;
+  background: #28a745;
+  color: white;
+}
+
+.cadastrar-cliente-progress-line {
+  width: 80px;
+  height: 3px;
+  background: #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.cadastrar-cliente-progress-line.completed {
+  background: #28a745;
+}
+
+.cadastrar-cliente-step-labels {
+  display: flex;
+  justify-content: center;
+  gap: 128px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #6c757d;
+}
+
+.cadastrar-cliente-step-labels span.active {
+  color: #667eea;
+  font-weight: 600;
+}
+
+/* Alert Styles */
+.cadastrar-cliente-custom-alert {
+  border-radius: 16px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: none;
+  animation: cadastrarClienteSlideDown 0.3s ease;
+}
+
+.cadastrar-cliente-custom-alert.success {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+}
+
+.cadastrar-cliente-custom-alert.error {
+  background: linear-gradient(135deg, #dc3545, #fd7e14);
+  color: white;
+}
+
+.cadastrar-cliente-alert-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cadastrar-cliente-alert-close {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 1.1rem;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.cadastrar-cliente-alert-close:hover {
+  opacity: 1;
+}
+
+/* Step Content */
+.cadastrar-cliente-step-content {
+  margin-bottom: 2rem;
+}
+
+.cadastrar-cliente-step-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.cadastrar-cliente-step-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin: 0 auto 1.5rem;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+}
+
+.cadastrar-cliente-step-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.cadastrar-cliente-step-description {
+  color: #6c757d;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+/* Form Controls */
+.cadastrar-cliente-page .form-floating {
+  position: relative;
+}
+
+.cadastrar-cliente-page .form-control,
+.cadastrar-cliente-page .form-select {
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 1rem 0.75rem;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+}
+
+.cadastrar-cliente-page .form-control:focus,
+.cadastrar-cliente-page .form-select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  background: white;
+}
+
+.cadastrar-cliente-page .form-floating label {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.cadastrar-cliente-page .text-danger {
+  color: #dc3545 !important;
+}
+
+/* Navigation */
+.cadastrar-cliente-form-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 2px solid #f8f9fa;
+}
+
+.cadastrar-cliente-nav-left,
+.cadastrar-cliente-nav-right {
+  display: flex;
+  gap: 1rem;
+}
+
+.cadastrar-cliente-btn {
+  padding: 0.75rem 2rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.cadastrar-cliente-btn-primary {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.cadastrar-cliente-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+.cadastrar-cliente-btn-success {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.cadastrar-cliente-btn-success:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(40, 167, 69, 0.4);
+}
+
+.cadastrar-cliente-btn-outline {
+  background: transparent;
+  color: #667eea;
+  border: 2px solid #667eea;
+}
+
+.cadastrar-cliente-btn-outline:hover:not(:disabled) {
+  background: #667eea;
+  color: white;
+  transform: translateY(-2px);
+}
+
+.cadastrar-cliente-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.cadastrar-cliente-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: cadastrarClienteSpin 1s linear infinite;
+}
+
+/* Info Box */
+.cadastrar-cliente-info-box {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+  display: flex;
+  gap: 1rem;
+  border: 1px solid #dee2e6;
+}
+
+.cadastrar-cliente-info-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.cadastrar-cliente-info-content h6 {
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.cadastrar-cliente-info-content ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: #6c757d;
+}
+
+.cadastrar-cliente-info-content li {
+  margin-bottom: 0.25rem;
+  font-size: 0.95rem;
+}
+
+/* Animations */
+@keyframes cadastrarClienteSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cadastrarClienteSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .cadastrar-cliente-form-container {
+    padding: 2rem 1.5rem;
+    margin: 1rem;
+    border-radius: 20px;
+  }
+
+  .cadastrar-cliente-form-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .cadastrar-cliente-form-title {
+    font-size: 1.8rem;
+  }
+
+  .cadastrar-cliente-progress-bar {
+    transform: scale(0.9);
+  }
+
+  .cadastrar-cliente-step-labels {
+    gap: 60px;
+    font-size: 0.8rem;
+  }
+
+  .cadastrar-cliente-form-navigation {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .cadastrar-cliente-nav-left,
+  .cadastrar-cliente-nav-right {
+    width: 100%;
+  }
+
+  .cadastrar-cliente-btn {
+    width: 100%;
+  }
+
+  .cadastrar-cliente-info-box {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .cadastrar-cliente-page {
+    padding: 1rem 0;
+  }
+
+  .cadastrar-cliente-form-container {
+    padding: 1.5rem 1rem;
+  }
+
+  .cadastrar-cliente-step-icon {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+  }
+
+  .cadastrar-cliente-step-title {
+    font-size: 1.5rem;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .cadastrar-cliente-form-container {
+    background: rgba(31, 41, 55, 0.95);
+    color: #f9fafb;
+  }
+
+  .cadastrar-cliente-form-title {
+    color: #f9fafb;
+  }
+
+  .cadastrar-cliente-form-subtitle {
+    color: #9ca3af;
+  }
+
+  .cadastrar-cliente-step-title {
+    color: #f9fafb;
+  }
+
+  .cadastrar-cliente-step-description {
+    color: #9ca3af;
+  }
+
+  .cadastrar-cliente-page .form-control,
+  .cadastrar-cliente-page .form-select {
+    background: rgba(55, 65, 81, 0.8);
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .cadastrar-cliente-page .form-floating label {
+    color: #9ca3af;
+  }
+
+  .cadastrar-cliente-info-box {
+    background: rgba(55, 65, 81, 0.5);
+    border-color: #4b5563;
+  }
+
+  .cadastrar-cliente-info-content h6 {
+    color: #f9fafb;
+  }
+
+  .cadastrar-cliente-info-content ul {
+    color: #9ca3af;
+  }
+}

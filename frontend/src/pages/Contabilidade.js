@@ -633,35 +633,42 @@ const Contabilidade = () => {
               ))}
             </select>
           </div>
-          <div className="col-md-8 d-flex align-items-end gap-2">
-            <button
-              className="btn btn-outline-primary"
-              onClick={carregarHistorico}
-              disabled={historicoCarregando}
-            >
-              {historicoCarregando ? (
-                <>
-                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                  Carregando...
-                </>
-              ) : (
-                <>
-                  <i className="fas fa-history me-2"></i>
-                  Ver Histórico de Entregas
-                </>
-              )}
-            </button>
-            
-            <button
-              className="btn btn-outline-success"
-              onClick={() => window.location.href = '/Textolivre'}
-            >
-              <i className="fas fa-edit me-2"></i>
-              Texto Livre
-            </button>
-          </div>
-        </div>
+<div className="col-md-8 d-flex align-items-end gap-2">
+  <button
+    className="btn btn-outline-primary"
+    onClick={carregarHistorico}
+    disabled={historicoCarregando}
+  >
+    {historicoCarregando ? (
+      <>
+        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+        Carregando...
+      </>
+    ) : (
+      <>
+        <i className="fas fa-history me-2"></i>
+        Ver Histórico de Entregas
+      </>
+    )}
+  </button>
+  
+  <button
+    className="btn btn-outline-success"
+    onClick={() => window.location.href = '/Textolivre'}
+  >
+    <i className="fas fa-edit me-2"></i>
+    Texto Livre
+  </button>
 
+  <button
+    className="btn btn-outline-info"
+    onClick={() => window.location.href = '/CadastrarCliente'}
+  >
+    <i className="fas fa-user-plus me-2"></i>
+    Cadastrar Cliente
+  </button>
+</div>
+        </div>
         {/* GRÁFICOS DE DESEMPENHO */}
         {filtros.operador && (
           <div className="mb-4 p-3 border rounded bg-light">

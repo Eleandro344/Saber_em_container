@@ -3677,4 +3677,83 @@ def registrar_entrega_atrasada(request):
         }, status=500)    
 
 
+@csrf_exempt
+def cadastrar_cliente(request):
+    if request.method != 'POST':
+        return JsonResponse({'erro': 'Método não permitido'}, status=405)
+    
+    try:
+        # Decodificar o corpo da requisição
+        body = json.loads(request.body.decode('utf-8'))
         
+        # Verificar se o número_dominio foi fornecido (campo obrigatório)
+        numero_dominio = body.get('numero_dominio')
+        if not numero_dominio:
+            return JsonResponse({'erro': 'Número do domínio é obrigatório'}, status=400)
+        
+        # Conexão com o banco
+        engine = create_engine(config('DATABASE_URL'))
+        
+        with engine.connect() as conn:
+            # Verificar se o cliente já existe
+            query_check = text("""
+            SELECT numero_dominio FROM clientes_contabil WHERE numero_dominio = :numero_dominio
+            """)
+            
+            result = conn.execute(query_check, {'numero_dominio': numero_dominio})
+            if result.fetchone():
+                return JsonResponse({'erro': 'Cliente com este número de domínio já existe'}, status=400)
+            
+            # Preparar os dados para inserção
+            campos = [
+                'numero_dominio', 'empresa', 'drive_cliente', 'dt', 'regime', 
+                'operador', 'competencia_entrada', 'competencia_saida', 'tipo_empresa',
+                'tipo_entrega', 'controle_financeiro', 'link_bi', 'senha_bi', 
+                'tipo_bi', 'prioridade_cs', 'bi_conferido', 'ultima_entrega', 'proxima_entrega'
+            ]
+            
+            # Filtrar apenas campos que foram enviados
+            campos_valores = {}
+            placeholders = {}
+            
+            for campo in campos:
+                if campo in body and body[campo] and str(body[campo]).strip():
+                    valor = str(body[campo]).strip()
+                    
+                    # Tratamento especial para datas
+                    if campo in ['ultima_entrega', 'proxima_entrega'] and valor:
+                        try:
+                            # Converter data do formato YYYY-MM-DD para YYYY-MM-DD 00:00:00
+                            data_obj = datetime.strptime(valor, '%Y-%m-%d')
+                            valor = data_obj.strftime('%Y-%m-%d 00:00:00')
+                        except ValueError:
+                            # Se não conseguir converter, manter o valor original
+                            pass
+                    
+                    campos_valores[campo] = valor
+                    placeholders[campo] = f':{campo}'
+            
+            # Construir a query de inserção
+            campos_str = ', '.join(campos_valores.keys())
+            valores_str = ', '.join(placeholders.values())
+            
+            query_insert = text(f"""
+            INSERT INTO clientes_contabil ({campos_str})
+            VALUES ({valores_str})
+            """)
+            
+            # Executar a inserção
+            conn.execute(query_insert, campos_valores)
+            conn.commit()
+        
+        return JsonResponse({
+            'mensagem': 'Cliente cadastrado com sucesso',
+            'numero_dominio': numero_dominio
+        })
+    
+    except Exception as e:
+        print(f"Erro ao cadastrar cliente: {str(e)}")
+        return JsonResponse({
+            'erro': 'Não foi possível cadastrar o cliente',
+            'detalhes': str(e)
+        }, status=500)        

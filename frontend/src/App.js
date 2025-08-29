@@ -21,9 +21,10 @@ import Das from './pages/Das';
 import Enviaremaildp from './pages/Enviaremaildp';
 import Contabilidade from './pages/Contabilidade';
 import Textolivre from './pages/Textolivre';
+import CadastrarCliente from './pages/Cadastrarcliente';  
 const LayoutWrapper = ({ children }) => {
   const location = useLocation();
-  const hideHeaderRoutes = ['/login', '/kanban', '/tarefas', '/IntegraContador','/Dctfweb','/Dividas','/das','/Enviaremaildp','/contabilidade','/Textolivre','/Contabilidade'];
+  const hideHeaderRoutes = ['/login', '/kanban', '/tarefas', '/IntegraContador','/Dctfweb','/Dividas','/das','/Enviaremaildp','/contabilidade','/Textolivre','/Contabilidade','/CadastrarCliente'];
   const isHeaderHidden = hideHeaderRoutes.includes(location.pathname);
 
   return (
@@ -98,6 +99,7 @@ function App() {
             <Route path="/Enviaremaildp" element={<Enviaremaildp />} />
             <Route path="/Contabilidade" element={<Contabilidade />} />
             <Route path="/Textolivre" element={<Textolivre />} />
+            <Route path="/CadastrarCliente" element={<CadastrarCliente />} />
           </Route>
         </Routes>
       </LayoutWrapper>
